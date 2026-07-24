@@ -1,0 +1,8 @@
+---
+# Custom yamllint configuration file
+
+extends: relaxed
+
+rules:
+  indentation:
+    indent-sequences: consistent
