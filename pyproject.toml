@@ -40,7 +40,7 @@ source = "https://github.com/astrosocket/gusteau_translate"
 issues = "https://github.com/astrosocket/gusteau_translate/issues/new"
 
 [project.scripts]
-gusteau_translate = "gusteau_translate.translate:translate"
+gusteau_translate = "gusteau_translate.main:cli"
 
 [tool.hatch.version]
 source = "vcs"
