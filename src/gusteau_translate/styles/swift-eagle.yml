@@ -1,0 +1,1214 @@
+# Translation style for the EAGLE project snapshots found on CAMELS
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  pipeline_additions:
+    DatasetTranslation:
+      - LoadSwiftLikeUnitsStep
+    ParticleDatasetTranslation:
+      # - PackingcubesSortStep
+
+# The following fields are in GUSTEAU Spec order
+
+# Required groups
+Code:
+  Code: {type: AttributeTranslation}
+  Code_hash: {constant: "", type: ConstantAttributeTranslation}
+  Code_version:
+    input_path: /Code.Code Version
+    type: AttributeTranslation
+  HDF5_version:
+    input_path: /Code.HDF5 library version
+    type: AttributeTranslation
+  VCS: {constant: git, type: ConstantAttributeTranslation}
+  VCS_id: {input_path: /Code.Git Revision, type: AttributeTranslation}
+  VCS_repository:
+    constant: https://github.com/SWIFTSIM/SWIFT
+    type: ConstantAttributeTranslation
+  # TODO: populate the library versions dynamically
+  Library_versions:
+    constant: ["FFTW-v3.x", "GSL-v2.5", ]
+    type: ConstantAttributeTranslation
+  Configuration_options:
+    input_path: /Code.Configuration options
+    type: AttributeTranslation
+Cosmology:
+  # All of these fields should be scalars...
+  Is_cosmological:
+    input_path: /Cosmology.Cosmological run
+    force_scalar: true
+    type: AttributeTranslation
+  Critical_density:
+    input_path: "/Cosmology.Critical density [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  Critical_density_at_z0:
+    input_path: "/Cosmology.Critical density at redshift zero [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  H:
+    input_path: "/Cosmology.H [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  H0:
+    input_path: "/Cosmology.H0 [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  Hubble_time:
+    input_path: "/Cosmology.Hubble time [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  Lookback_time:
+    input_path: "/Cosmology.Lookback time [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  Mean_baryon_density:
+    input_path: "/Cosmology.Mean baryonic density [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  Mean_matter_density:
+    input_path: "/Cosmology.Mean matter density [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  N_eff: {force_scalar: true, type: AttributeTranslation}
+  Omega_baryon:
+    input_path: /Cosmology.Omega_b
+    force_scalar: true
+    type: AttributeTranslation
+  Omega_curvature:
+    input_path: /Cosmology.Omega_k
+    force_scalar: true
+    type: AttributeTranslation
+  Omega_darkmatter:
+    input_path: /Cosmology.Omega_cdm
+    force_scalar: true
+    type: AttributeTranslation
+  Omega_lambda: {force_scalar: true, type: AttributeTranslation}
+  Omega_matter:
+    input_path: /Cosmology.Omega_m
+    force_scalar: true
+    type: AttributeTranslation
+  Omega_radiation:
+    input_path: /Cosmology.Omega_r
+    force_scalar: true
+    type: AttributeTranslation
+  Redshift: {force_scalar: true, type: AttributeTranslation}
+  Scale_factor:
+    input_path: /Cosmology.Scale-factor
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: a}
+  T_CMB_0:
+    input_path: "/Cosmology.T_CMB_0 [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  T_CMB_0_SI:
+    input_path: /Cosmology.T_CMB_0 [K]
+    force_scalar: true
+    type: AttributeTranslation
+  Universe_age:
+    input_path: "/Cosmology.Universe age [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  a_begin:
+    input_path: /Cosmology.a_beg
+    force_scalar: true
+    type: AttributeTranslation
+  a_end: {force_scalar: true, type: AttributeTranslation}
+  h: {force_scalar: true, type: AttributeTranslation}
+  time_begin:
+    input_path: "/Cosmology.time_beg [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  time_end:
+    input_path: "/Cosmology.time_end [internal units]"
+    force_scalar: true
+    type: AttributeTranslation
+  w: {force_scalar: true, type: AttributeTranslation}
+  w_0: {force_scalar: true, type: AttributeTranslation}
+  w_a: {force_scalar: true, type: AttributeTranslation}
+Header:
+  # Note that a number of these fields are single element arrays instead of
+  # scalars
+  Code: {type: AttributeTranslation}
+  Source: {constant: swift-eagle, type: ConstantAttributeTranslation}
+  Source_file: {file_path: swift-eagle, type: FileContentsTranslation}
+  ParticleNames:
+    constant: ["Gas", "ColdDarkMatter", "Stars", "BlackHoles"]
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: ParticleNames}
+  ParticleNumbers:
+    input_path: /Header.NumPart_Total
+    type: AttributeTranslation
+    dtype: uint64
+    pipeline:
+      ReorderColumnStep: {new_width: 4, col_indices: [0, 1, 4, 5]}
+      SaveQuantityStep: {name: ParticleNumbers}
+  InitialMassTable:
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep: {new_width: 4, col_indices: [0, 1, 4, 5]}
+  BoundingBox:
+    input_path: /Header.BoxSize
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [-1, -1, -1, 0, 1, 2]
+  Time: {force_scalar: true, type: AttributeTranslation}
+  RunName: {type: AttributeTranslation}
+  NumFilesPerSnapshot: {force_scalar: true, type: AttributeTranslation}
+  Dimension: {force_scalar: true, type: AttributeTranslation}
+  PartType_Mapping:
+    constant: [0, 1, -1, -1, 1, 2]
+    type: ConstantAttributeTranslation
+  SnapshotDate: {type: AttributeTranslation}
+  Redshift:
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: z}
+  # Gadget-2 header fields
+  # Several of these need to be tweaked because they include neutrinos as a
+  # seventh species
+  NumPart_ThisFile:
+    type: AttributeTranslation
+    dtype: uint32
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [0, 1, 2, 3, 4, 5]
+  MassTable:
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [0, 1, 2, 3, 4, 5]
+  Flag_Sfr: {constant: 0, dtype: int32, type: ConstantAttributeTranslation}
+  Flag_Feedback: {constant: 0, dtype: int32, type: ConstantAttributeTranslation}
+  NumPart_Total:
+    type: AttributeTranslation
+    dtype: int32 # match Gadget-2
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [0, 1, 2, 3, 4, 5]
+  Flag_Cooling: {constant: 0, dtype: int32, type: ConstantAttributeTranslation}
+  BoxSize:
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep:
+        new_width: 1
+        # All three columns are equal so just pick one
+        col_indices: [0]
+  Omega0:
+    force_scalar: true
+    input_path: /Cosmology.Omega_m
+    type: AttributeTranslation
+  OmegaLambda:
+    force_scalar: true
+    input_path: /Cosmology.Omega_lambda
+    type: AttributeTranslation
+  HubbleParam:
+    force_scalar: true
+    input_path: /Cosmology.h
+    type: AttributeTranslation
+  Flag_StellarAge:
+    constant: 0
+    dtype: int32
+    type: ConstantAttributeTranslation
+  Flag_Metals: {constant: 0, dtype: int32, type: ConstantAttributeTranslation}
+  NumPart_Total_HW:
+    input_path: /Header.NumPart_Total_HighWord
+    type: AttributeTranslation
+    dtype: int32
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [0, 1, 2, 3, 4, 5]
+  Flag_Entropy_ICs:
+    # While this field is present in the Snapshot, it seems to be on a
+    # per-particle basis instead of an overall flag, as specified in Gadget-2
+    dtype: int32
+    constant: 0
+    type: ConstantAttributeTranslation
+  SwiftFlagEntropyICs:
+    input_path: /Header.Flag_Entropy_ICs
+    type: AttributeTranslation
+RunInfo:
+  ParameterFiles:
+    ParameterFile: {constant: N/A, type: ConstantAttributeTranslation}
+    ParameterFilePath: {constant: "", type: ConstantAttributeTranslation}
+  SessionRuntime: {constant: -1, type: ConstantAttributeTranslation}
+  SnapshotDate:
+    constant: "2026-07-14T23:00:32.823890+00:00"
+    type: ConstantAttributeTranslation
+  System:
+    input_path: /Header.System
+    type: AttributeTranslation
+  TotalRuntime: {constant: -1, type: ConstantAttributeTranslation}
+Units:
+  UnitCurrent_CGS:
+    input_path: "/Units.Unit current in cgs (U_I)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_I}
+  UnitLength_CGS:
+    input_path: "/Units.Unit length in cgs (U_L)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_L}
+  UnitMass_CGS:
+    input_path: "/Units.Unit mass in cgs (U_M)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_M}
+  UnitTemperature_CGS:
+    input_path: "/Units.Unit temperature in cgs (U_T)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_T}
+  UnitTime_CGS:
+    input_path: "/Units.Unit time in cgs (U_t)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_t}
+
+
+Parameters:
+  output_path: /RunInfo/Parameters
+  type: GroupTranslation
+
+Cells:
+  Meta-data:
+    output_path: /Cells/Metadata
+    type: GroupTranslation
+
+# Swift snapshots have descriptive names for their particle groups, like
+# GasParticles, StarParticles, etc. However, they are actually links to the
+# PartTypeX particle groups. Since PartTypeX groups are more common in general,
+# We'll use those for now
+PartType0:
+  output_path: /Gas
+  type: GroupTranslation
+  has_particles: true
+  description: "Baryonic gas particles with chemistry and hydrodynamics"
+  tags:
+    - Hydrogen
+    - Abundance
+    - NumberDensity
+    - MassDensity
+    - Subgrid
+    - Particles
+    - Hydro
+    - Feedback
+    - StellarWind
+    - Group
+    - Massive
+    - Metallic
+    - Potential
+    - Merge-split
+    - Thermal
+  pipeline:
+    LinkStep:
+      path: /PartType0
+  children:
+    # Attributes
+    # NumberOfFields and NumberOfParticles will be included via auto-discovery
+    Aliases:
+      constant: ["PartType0"]
+      type: ConstantAttributeTranslation
+
+    # Groups
+    Smoothed:
+      description: "Quantities smoothed over the hydrodynamics cell"
+      # Can't include Hydrogen and Helium tags because not all species are
+      # present
+      tags: ["MassFraction", "Metallic", "StellarWind"]
+      type: CreateGroupTranslation
+      children:
+        MassFractions:
+          tags: []
+          description: "Mass fraction-based chemical abundances"
+          type: CreateGroupTranslation
+          children:
+            Hydrogen:
+              tags: []
+              description: "Hydrogen chemical quantities"
+              type: CreateGroupTranslation
+            Helium:
+              tags: []
+              description: "Helium chemical quantities"
+              type: CreateGroupTranslation
+            Metals:
+              tags: []
+              description: "Metallic chemical quantities"
+              type: CreateGroupTranslation
+              children:
+                MetalOnlyDenominator:
+                  constant: true
+                  type: ConstantAttributeTranslation
+        StellarWind:
+          tags: []
+          description: >
+            This subgroup is the primary location to store stellar wind-related
+            subgrid quantities
+          type: CreateGroupTranslation
+          children:
+            SNIa:
+              tags: []
+              description: >
+                Supernovae Type-Ia-related stellar wind quantities
+              type: CreateGroupTranslation
+    NumberDensities:
+      description: "Number density-based chemical abundances"
+      tags: []
+      type: CreateGroupTranslation
+      children:
+        Hydrogen:
+          description: "Hydrogen chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+    MassDensities:
+      description: "Mass density-based chemical abundances"
+      tags: []
+      type: CreateGroupTranslation
+      children:
+        Hydrogen:
+          description: "Hydrogen chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+    Abundances:
+      type: CreateGroupTranslation
+      description: "Normalized number fraction-based chemical abundances"
+      tags: []
+      children:
+        Hydrogen:
+          description: "Hydrogen chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+    Subgrid:
+      description: >
+        This subgroup is the primary location to store miscellaneous subgrid
+        quantities
+      tags: []
+      type: CreateGroupTranslation
+    Feedback:
+      description: >
+        This subgroup is the primary location to store feedback-related
+        subgrid quantities
+      tags: ["AGN", "SNII"]
+      type: CreateGroupTranslation
+      children:
+        AGN:
+          description: >
+            Active Galactic Nuclei-related feedback quantities
+          tags: []
+          type: CreateGroupTranslation
+        SNII:
+          description: "Supernovae Type-II-related feedback quantities"
+          tags: []
+          type: CreateGroupTranslation
+    StellarWind:
+      description: >
+        This subgroup is the primary location to store stellar wind-related
+        subgrid quantities
+      tags: ["AGB", "SNII", "SNIa"]
+      type: CreateGroupTranslation
+      children:
+        AGB:
+          description: >
+            Asymptotic Giant Branch-related stellar wind quantities
+          tags: []
+          type: CreateGroupTranslation
+        SNIa:
+          description: >
+            Supernovae Type Ia-related stellar wind quantities
+          tags: []
+          type: CreateGroupTranslation
+        SNII:
+          description: >
+            Supernovae Type II-related stellar wind quantities
+          tags: []
+          type: CreateGroupTranslation
+    Thermal:
+      description: "Group for thermal physics (cooling/heating) quantities"
+      tags: []
+      type: CreateGroupTranslation
+
+    # Datasets
+    # Note: ParticleIDs, Coordinates, Velocities, Masses, Potentials,
+    # Densities, Internal Energies, Pressures, ProgenitorParticleIDs,
+    # SplitCounts, SplitTrees,
+    # can be processed via the auto-discovery
+    AveragedStarFormationRates:
+      output_path: Subgrid/AveragedStarFormationRates
+      type: ParticleDatasetTranslation
+    AtomicHydrogenMasses:
+      # This field might need to be scaled/transformed in some way. I don't
+      # understand exactly what it's supposed to be
+      output_path: MassDensities/Hydrogen/H
+      type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep:
+          path: /Gas/MassDensities/Hydrogen/Hydrogen
+    ComptonYParameters:
+      output_path: Subgrid/ComptonYParameters
+      type: ParticleDatasetTranslation
+    DensitiesAtLastAGNEvent:
+      output_path: Feedback/AGN/Densities_at_last_event
+      type: ParticleDatasetTranslation
+    DensitiesBeforeLastAGNEvent:
+      output_path: Feedback/AGN/Densities_before_last_event
+      type: ParticleDatasetTranslation
+    ElectronNumberDensities:
+      output_path: NumberDensities/Hydrogen/E
+      type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep:
+          path: /Gas/NumberDensities/Hydrogen/Electron
+    EnergiesReceivedFromAGNFeedback:
+      output_path: Feedback/AGN/Energies_received
+      type: ParticleDatasetTranslation
+    EntropiesAtLastAGNEvent:
+      output_path: Feedback/AGN/Entropies_at_last_event
+      type: ParticleDatasetTranslation
+    EntropiesBeforeLastAGNEvent:
+      output_path: Feedback/AGN/Entropies_before_last_event
+      type: ParticleDatasetTranslation
+    FOFGroupIDs:
+      output_path: GroupIDs
+      type: ParticleDatasetTranslation
+    HeatedByAGNFeedback:
+      output_path: Feedback/AGN/Heated_by_feedback
+      type: ParticleDatasetTranslation
+    HeatedBySNIIFeedback:
+      output_path: Feedback/SNII/Heated_by_feedback
+      type: ParticleDatasetTranslation
+    IronMassFractionsFromSNIa:
+      output_path: StellarWind/SNIa/Iron_mass_fractions
+      type: ParticleDatasetTranslation
+    LastAGNFeedbackScaleFactors:
+      output_path: Feedback/AGN/Last_event_scale_factors
+      type: ParticleDatasetTranslation
+    MassesFromAGB:
+      output_path: StellarWind/AGB/Masses
+      type: ParticleDatasetTranslation
+    MassesFromSNII:
+      output_path: StellarWind/SNII/Masses
+      type: ParticleDatasetTranslation
+    MassesFromSNIa:
+      output_path: StellarWind/SNIa/Masses
+      type: ParticleDatasetTranslation
+    MaximalTemperatureScaleFactors:
+      output_path: Subgrid/MaximalTemperatureScaleFactors
+      type: ParticleDatasetTranslation
+    MaximalTemperatures:
+      output_path: Subgrid/MaximalTemperatures
+      type: ParticleDatasetTranslation
+    MetalMassFractions:
+      # Putting this in subgrid since we don't have any of the other components
+      # for the Metallic tag
+      output_path: Subgrid/MetalMassFractions
+      type: ParticleDatasetTranslation
+    MetalMassFractionsFromAGB:
+      output_path: StellarWind/AGB/Metal_mass_fractions
+      type: ParticleDatasetTranslation
+    MetalMassFractionsFromSNII:
+      output_path: StellarWind/SNII/Metal_mass_fractions
+      type: ParticleDatasetTranslation
+    MetalMassFractionsFromSNIa:
+      output_path: StellarWind/SNIa/Metal_mass_fractions
+      type: ParticleDatasetTranslation
+    MolecularHydrogenMasses:
+      output_path: Subgrid/MolecularHydrogenMasses
+      type: ParticleDatasetTranslation
+    SmoothedIronMassFractionsFromSNIa:
+      output_path: Smoothed/StellarWind/SNIa/Iron_mass_fractions
+      type: ParticleDatasetTranslation
+    SmoothingLengths:
+      output_path: KernelLengths
+      type: ParticleDatasetTranslation
+    StarFormationRates:
+      output_path: Subgrid/StarFormationRates
+      type: ParticleDatasetTranslation
+    SubgridPhysicalDensities:
+      output_path: Subgrid/PhysicalDensities
+      type: ParticleDatasetTranslation
+    SubgridTemperatures:
+      output_path: Subgrid/Temperatures
+      type: ParticleDatasetTranslation
+    Temperatures:
+      output_path: Thermal/Temperatures
+      type: ParticleDatasetTranslation
+
+# For the following, arranging by output field is more convenient
+# Note that we already created the groups above, otherwise we'd need to create
+# them here
+Gas:
+  Smoothed:
+    MassFractions:
+      Hydrogen:
+        H:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 0 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Hydrogen/Hydrogen
+      Helium:
+        He:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 1 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Helium/Helium
+      Metals:
+        C:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 2 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Carbon
+        N:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 3 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Nitrogen
+        O:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 4 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Oxygen
+        Ne:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 5 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Neon
+        Mg:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 6 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Magnesium
+        Si:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 7 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Silicon
+        Fe:
+          input_path: /PartType0/SmoothedElementMassFractions
+          columns: 8 # 0-based indexing
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Gas/Smoothed/MassFractions/Metals/Iron
+        TotalMasses:
+          input_path: /PartType0/SmoothedMetalMassFractions
+          type: ParticleDatasetTranslation
+  Abundances:
+    Hydrogen:
+      H:
+        input_path: /PartType0/SpeciesFractions
+        columns: 0 # 0-based indexing
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/Abundances/Hydrogen/Hydrogen
+      Hp:
+        input_path: /PartType0/SpeciesFractions
+        columns: 1 # 0-based indexing
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/Abundances/Hydrogen/Proton
+      H2:
+        input_path: /PartType0/SpeciesFractions
+        columns: 2 # 0-based indexing
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/Abundances/Hydrogen/MolecularHydrogen
+
+PartType1:
+  output_path: /ColdDarkMatter
+  type: GroupTranslation
+  description: "Cold dark matter with nbody physics"
+  tags:
+    - Group
+    - Massive
+    - Particles
+    - Potential
+  has_particles: true
+  pipeline:
+    LinkStep:
+      path: /PartType1
+  children:
+    # Attributes
+    # NumberOfFields and NumberOfParticles will be included via auto-discovery
+    Aliases:
+      constant: ["PartType1"]
+      type: ConstantAttributeTranslation
+
+    # Groups:
+    # None
+
+    # Datasets:
+    # Note: ParticleIDs, Coordinates, Velocities, Masses, Potentials,
+    # can be processed via the auto-discovery
+    FOFGroupIDs:
+      output_path: GroupIDs
+      type: ParticleDatasetTranslation
+
+
+PartType4:
+  output_path: /Stars
+  type: GroupTranslation
+  has_particles: true
+  description: "Stellar particles"
+  tags:
+    - Subgrid
+    - Particles
+    - Group
+    - Massive
+    - Potential
+    - Sink-stars
+  pipeline:
+    LinkStep:
+      path: /PartType4
+  children:
+    # Attributes
+    # NumberOfFields and NumberOfParticles will be included via auto-discovery
+    Aliases:
+      constant: ["PartType4"]
+      type: ConstantAttributeTranslation
+
+    # Groups
+    Subgrid:
+      description: >
+        This subgroup is the primary location to store miscellaneous subgrid
+        quantities
+      tags: []
+      type: CreateGroupTranslation
+      children:
+        Luminosities:
+          input_description: From /PartType4/Luminosities
+          description: >
+            Rest-frame dust-free AB-luminosities of the star particles in the
+            GAMA bands. These were computed using the BC03 (GALAXEV) models
+            convolved with different filter bands and interpolated in log-log
+            (f(log(Z), log(age)) = log(flux)) as used in the dust-free modelling
+            of Trayford et al. (2015). The luminosities are given in
+            dimensionless units. They have been divided by 3631 Jy already, i.e.
+            they can be turned into absolute AB-magnitudes (rest-frame absolute
+            maggies) directly by applying -2.5 log10(L) without additional
+            corrections.
+          tags: []
+          type: CreateGroupTranslation
+    FromParent:
+      type: CreateGroupTranslation
+      description: >
+        Fields retained from the parent particle that are no longer updated
+      tags: []
+      children:
+        Gas:
+          type: CreateGroupTranslation
+          description: >
+            Fields from the parent gas particle
+          tags: ["Feedback", "Merge-split", "StellarWind", "Subgrid"]
+          children:
+            Feedback:
+              description: >
+                This subgroup is the primary location to store feedback-related
+                subgrid quantities
+              tags: ["AGN", "SNII"]
+              type: CreateGroupTranslation
+              children:
+                AGN:
+                  description: >
+                    Active Galactic Nuclei-related feedback quantities
+                  tags: []
+                  type: CreateGroupTranslation
+                SNII:
+                  description: >
+                    Supernovae Type-II-related feedback quantities
+                  tags: []
+                  type: CreateGroupTranslation
+            StellarWind:
+              description: >
+                This subgroup is the primary location to store stellar
+                wind-related subgrid quantities
+              tags: ["AGB", "SNII", "SNIa"]
+              type: CreateGroupTranslation
+              children:
+                AGB:
+                  description: >
+                    Asymptotic Giant Branch-related stellar wind quantities
+                  tags: []
+                  type: CreateGroupTranslation
+                SNIa:
+                  description: >
+                    Supernovae Type Ia-related stellar wind quantities
+                  tags: []
+                  type: CreateGroupTranslation
+                SNII:
+                  description: >
+                    Supernovae Type II-related stellar wind quantities
+                  tags: []
+                  type: CreateGroupTranslation
+            Smoothed:
+              description: >
+                Quantities smoothed over the hydrodynamics cell
+              tags: ["MassFraction", "Metallic", "StellarWind"]
+              type: CreateGroupTranslation
+              children:
+                MassFractions:
+                  description: "Mass fraction-based chemical abundances"
+                  tags: []
+                  type: CreateGroupTranslation
+                  children:
+                    Hydrogen:
+                      description: "Hydrogen chemical quantities"
+                      tags: []
+                      type: CreateGroupTranslation
+                    Helium:
+                      description: "Helium chemical quantities"
+                      tags: []
+                      type: CreateGroupTranslation
+                    Metals:
+                      description: "Metallic chemical quantities"
+                      tags: []
+                      type: CreateGroupTranslation
+                      children:
+                        MetalOnlyDenominator:
+                          constant: true
+                          type: ConstantAttributeTranslation
+                StellarWind:
+                  description: >
+                    This subgroup is the primary location to store stellar
+                    wind-related subgrid quantities
+                  tags: ["SNIa"]
+                  type: CreateGroupTranslation
+                  children:
+                    SNIa:
+                      description: >
+                        Supernovae Type Ia-related stellar wind quantities
+                      tags: []
+                      type: CreateGroupTranslation
+            Subgrid:
+              description:
+                This subgroup is the primary location to store miscellaneous
+                subgrid quantities
+              tags: []
+              type: CreateGroupTranslation
+
+
+    # Datasets
+    # Note: ParticleIDs, Coordinates, Velocities, Masses, Potentials,
+    # Densities, Internal Energies, Pressures, ProgenitorParticleIDs,
+    # SplitCounts, SplitTrees,
+    # can be processed via the auto-discovery
+    AveragedStarFormationRates:
+      output_path: FromParent/Gas/Subgrid/AveragedStarFormationRates
+      type: ParticleDatasetTranslation
+    BirthDensities:
+      output_path: Subgrid/BirthDensities
+      type: ParticleDatasetTranslation
+    BirthScaleFactors:
+      output_path: TransformScaleFactors
+      input_description: >
+        Scale factor of the most recent particle type transformation
+      type: ParticleDatasetTranslation
+    DensitiesAtLastAGNEvent:
+      output_path: FromParent/Gas/Feedback/AGN/Densities_at_last_event
+      type: ParticleDatasetTranslation
+    DensitiesBeforeLastAGNEvent:
+      output_path: FromParent/Gas/Feedback/AGN/Densities_before_last_event
+      type: ParticleDatasetTranslation
+    EnergiesReceivedFromAGNFeedback:
+      output_path: FromParent/Gas/Feedback/AGN/Energies_received
+      type: ParticleDatasetTranslation
+    EntropiesAtLastAGNEvent:
+      output_path: FromParent/Gas/Feedback/AGN/Entropies_at_last_event
+      type: ParticleDatasetTranslation
+    EntropiesBeforeLastAGNEvent:
+      output_path: FromParent/Gas/Feedback/AGN/Entropies_before_last_event
+      type: ParticleDatasetTranslation
+    FOFGroupIDs:
+      type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep: {path: /Stars/GroupIDs}
+    HeatedByAGNFeedback:
+      output_path: FromParent/Gas/Feedback/AGN/Heated_by_feedback
+      type: ParticleDatasetTranslation
+    HeatedBySNIIFeedback:
+      output_path: FromParent/Gas/Feedback/SNII/Heated_by_feedback
+      type: ParticleDatasetTranslation
+    InitialMasses:
+      output_path: Subgrid/InitialMasses
+      type: ParticleDatasetTranslation
+    IronMassFractionsFromSNIa:
+      output_path: FromParent/Gas/StellarWind/SNIa/Iron_mass_fractions
+      type: ParticleDatasetTranslation
+    MassesFromAGB:
+      output_path: FromParent/Gas/StellarWind/AGB/Masses
+      type: ParticleDatasetTranslation
+    MassesFromSNII:
+      output_path: FromParent/Gas/StellarWind/SNII/Masses
+      type: ParticleDatasetTranslation
+    MassesFromSNIa:
+      output_path: FromParent/Gas/StellarWind/SNIa/Masses
+      type: ParticleDatasetTranslation
+    MaximalTemperatureScaleFactors:
+      output_path: FromParent/Gas/Subgrid/MaximalTemperatureScaleFactors
+      type: ParticleDatasetTranslation
+    MaximalTemperatures:
+      output_path: FromParent/Gas/Subgrid/MaximalTemperatures
+      type: ParticleDatasetTranslation
+    MetalMassFractions:
+      # Putting this in subgrid since we don't have any of the other components
+      # for the Metallic tag
+      output_path: FromParent/Gas/Subgrid/MetalMassFractions
+      type: ParticleDatasetTranslation
+    MetalMassFractionsFromAGB:
+      output_path: FromParent/Gas/StellarWind/AGB/Metal_mass_fractions
+      type: ParticleDatasetTranslation
+    MetalMassFractionsFromSNII:
+      output_path: FromParent/Gas/StellarWind/SNII/Metal_mass_fractions
+      type: ParticleDatasetTranslation
+    MetalMassFractionsFromSNIa:
+      output_path: FromParent/Gas/StellarWind/SNIa/Metal_mass_fractions
+      type: ParticleDatasetTranslation
+    ProgenitorParticleIDs:
+      output_path: FromParent/Gas/ProgenitorParticleIDs
+      type: ParticleDatasetTranslation
+    SmoothedIronMassFractionsFromSNIa:
+      output_path: FromParent/Gas/Smoothed/StellarWind/SNIa/Iron_mass_fractions
+      type: ParticleDatasetTranslation
+    SmoothingLengths:
+      output_path: KernelLengths
+      type: ParticleDatasetTranslation
+    SplitCounts:
+      output_path: FromParent/Gas/SplitCounts
+      type: ParticleDatasetTranslation
+    SplitTrees:
+      output_path: FromParent/Gas/SplitTrees
+      type: ParticleDatasetTranslation
+
+# For the following, arranging by output field is more convenient
+# Note that we already created the groups above, otherwise we'd need to create
+# them here
+Stars:
+  FromParent:
+    Gas:
+      Smoothed:
+        MassFractions:
+          Hydrogen:
+            H:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 0 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Hydrogen/Hydrogen
+          Helium:
+            He:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 1 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Helium/Helium
+          Metals:
+            C:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 2 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Carbon
+            N:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 3 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Nitrogen
+            O:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 4 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Oxygen
+            Ne:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 5 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Neon
+            Mg:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 6 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Magnesium
+            Si:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 7 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Silicon
+            Fe:
+              input_path: /PartType4/SmoothedElementMassFractions
+              columns: 8 # 0-based indexing
+              type: ParticleDatasetTranslation
+              pipeline:
+                LinkStep:
+                  path: /Stars/FromParent/Gas/Smoothed/MassFractions/Metals/Iron
+            TotalMasses:
+              input_path: /PartType4/SmoothedMetalMassFractions
+              type: ParticleDatasetTranslation
+  Subgrid:
+    Luminosities:
+      u_band:
+        input_path: /PartType4/Luminosities
+        columns: 0 # 0-based indexing
+        type: ParticleDatasetTranslation
+      g_band:
+        input_path: /PartType4/Luminosities
+        columns: 1 # 0-based indexing
+        type: ParticleDatasetTranslation
+      r_band:
+        input_path: /PartType4/Luminosities
+        columns: 2 # 0-based indexing
+        type: ParticleDatasetTranslation
+      i_band:
+        input_path: /PartType4/Luminosities
+        columns: 3 # 0-based indexing
+        type: ParticleDatasetTranslation
+      z_band:
+        input_path: /PartType4/Luminosities
+        columns: 4 # 0-based indexing
+        type: ParticleDatasetTranslation
+      Y_band:
+        input_path: /PartType4/Luminosities
+        columns: 5 # 0-based indexing
+        type: ParticleDatasetTranslation
+      J_band:
+        input_path: /PartType4/Luminosities
+        columns: 6 # 0-based indexing
+        type: ParticleDatasetTranslation
+      H_band:
+        input_path: /PartType4/Luminosities
+        columns: 7 # 0-based indexing
+        type: ParticleDatasetTranslation
+      K_band:
+        input_path: /PartType4/Luminosities
+        columns: 8 # 0-based indexing
+        type: ParticleDatasetTranslation
+  PreviousParticleTypes:
+    type: ConstantParticleDatasetTranslation
+    constant: 0
+    like_dataset: /PartType4/SplitCounts
+
+PartType5:
+  output_path: /BlackHoles
+  type: GroupTranslation
+  has_particles: true
+  description: "Black hole particles"
+  tags:
+    - Feedback
+    - Black-hole
+    - Particles
+    - Group
+    - Massive
+    - Potential
+    - Transform
+  pipeline:
+    LinkStep:
+      path: /PartType5
+  children:
+    # Attributes
+    # NumberOfFields and NumberOfParticles will be included via auto-discovery
+    Aliases:
+      constant: ["PartType5"]
+      type: ConstantAttributeTranslation
+
+    # Groups
+    BH:
+      description: >
+        This subgroup is the primary location to store black hole-related
+        subgrid quantities
+      tags: []
+      type: CreateGroupTranslation
+    Feedback:
+      description: >
+        This subgroup is the primary location to store feedback-related
+        subgrid quantities
+      tags: ["AGN"]
+      type: CreateGroupTranslation
+      children:
+        AGN:
+          description: >
+            Active Galactic Nuclei-related feedback quantities
+          tags: []
+          type: CreateGroupTranslation
+    FromParent:
+      type: CreateGroupTranslation
+      description: >
+        Fields retained from the parent particle that are no longer updated
+      tags: []
+      children:
+        Gas:
+          type: CreateGroupTranslation
+          description: >
+            Fields from the parent gas particle
+          tags: ["StellarWind"]
+          children:
+            StellarWind:
+              description: >
+                This subgroup is the primary location to store stellar
+                wind-related subgrid quantities
+              tags: ["AGB", "SNII", "SNIa"]
+              type: CreateGroupTranslation
+              children:
+                AGB:
+                  description: >
+                    Asymptotic Giant Branch-related stellar wind quantities
+                  tags: []
+                  type: CreateGroupTranslation
+                SNIa:
+                  description: >
+                    Supernovae Type Ia-related stellar wind quantities
+                  tags: []
+                  type: CreateGroupTranslation
+                SNII:
+                  description: >
+                    Supernovae Type II-related stellar wind quantities
+                  tags: []
+                  type: CreateGroupTranslation
+
+
+    # Datasets
+    # Note: ParticleIDs, Coordinates, Velocities, Masses, Potentials,
+    # can be processed via the auto-discovery
+    AGNTotalInjectedEnergies:
+      output_path: Feedback/AGN/Total_injected_energies
+      type: ParticleDatasetTranslation
+    AccretionRates:
+      output_path: BH/Total_accretion_rates
+      type: ParticleDatasetTranslation
+    DynamicalMasses:
+      output_path: Masses
+      type: ParticleDatasetTranslation
+    FOFGroupIDs:
+      output_path: GroupIDs
+      type: ParticleDatasetTranslation
+    FormationScaleFactors:
+      output_path: TransformScaleFactors
+      type: ParticleDatasetTranslation
+    IronMassesFromSNIa:
+      output_path: FromParent/Gas/StellarWind/SNIa/Iron_mass_fractions
+      type: ParticleDatasetTranslation
+    LastAGNFeedbackScaleFactors:
+      output_path: Feedback/AGN/Last_event_scale_factors
+      type: ParticleDatasetTranslation
+    LastHighEddingtonFractionScaleFactors:
+      output_path: BH/LastHighEddingtonFractionScaleFactors
+      type: ParticleDatasetTranslation
+    LastMajorMergerScaleFactors:
+      output_path: BH/LastMajorMergerScaleFactors
+      type: ParticleDatasetTranslation
+    LastMinorMergerScaleFactors:
+      output_path: BH/LastMinorMergerScaleFactors
+      type: ParticleDatasetTranslation
+    MassesFromAGB:
+      output_path: FromParent/Gas/StellarWind/AGB/Masses
+      type: ParticleDatasetTranslation
+    MassesFromSNII:
+      output_path: FromParent/Gas/StellarWind/SNII/Masses
+      type: ParticleDatasetTranslation
+    MassesFromSNIa:
+      output_path: FromParent/Gas/StellarWind/SNIa/Masses
+      type: ParticleDatasetTranslation
+    MetalMassesFromAGB:
+      output_path: FromParent/Gas/StellarWind/AGB/MetalMasses
+      type: ParticleDatasetTranslation
+    MetalMassesFromSNII:
+      output_path: FromParent/Gas/StellarWind/SNII/MetalMasses
+      type: ParticleDatasetTranslation
+    MetalMassesFromSNIa:
+      output_path: FromParent/Gas/StellarWind/SNIa/MetalMasses
+      type: ParticleDatasetTranslation
+    NumberOfAGNEvents:
+      output_path: Feedback/AGN/Number_of_events
+      type: ParticleDatasetTranslation
+    NumberOfHeatingEvents:
+      output_path: BH/Number_of_heating_events
+      type: ParticleDatasetTranslation
+    NumberOfMergers:
+      output_path: BH/NumberOfMergers
+      type: ParticleDatasetTranslation
+    ProgenitorParticleIDs:
+      output_path: FromParent/Gas/ProgenitorParticleIDs
+      type: ParticleDatasetTranslation
+    SmoothingLengths:
+      output_path: KernelLengths
+      type: ParticleDatasetTranslation
+    SplitCounts:
+      output_path: FromParent/Gas/SplitCounts
+      type: ParticleDatasetTranslation
+    SplitTrees:
+      output_path: FromParent/Gas/SplitTrees
+      type: ParticleDatasetTranslation
+    SubgridMasses:
+      output_path: BH/Masses
+      type: ParticleDatasetTranslation
+    TotalAccretedMasses:
+      output_path: BH/Total_accreted_masses
+      type: ParticleDatasetTranslation
+
+# For the following, arranging by output field is more convenient
+# Note that we already created the groups above, otherwise we'd need to create
+# them here
+BlackHoles:
+  BH:
+    AveragedAccretionRates_0:
+      input_path: /PartType5/AveragedAccretionRates
+      columns: 0
+      input_description: Column 0 of /PartType5/AveragedAccretionRates
+      type: ParticleDatasetTranslation
+    AveragedAccretionRates_1:
+      input_path: /PartType5/AveragedAccretionRates
+      columns: 1
+      input_description: Column 1 of /PartType5/AveragedAccretionRates
+      type: ParticleDatasetTranslation
+  PreviousParticleTypes:
+    type: ConstantParticleDatasetTranslation
+    # description:
+    constant: 0
+    like_dataset: /PartType5/SplitCounts
