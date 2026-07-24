@@ -11,7 +11,9 @@ description="Tool for translating common astrophysical particle snapshots to the
 dependencies = [
     "swiftsimio",
     "numpy>=2.4, <2.5",
-    "h5py",
+    "h5py", 
+    "tomlkit>=0.15.0,<0.16", 
+    "ruamel-yaml>=0.19.1,<0.20", "sympy>=1.14.0,<2", 
 ]
 name = "gusteau-translate"
 requires-python = ">= 3.12"
@@ -92,6 +94,7 @@ preview = ["pixi-build"]
 pydantic = ">=2.13.4,<3"
 ipykernel = ">=7.3.0,<8"
 pip = ">=26.1.2,<27"
+yamllint = ">=1.38.0,<2"
 
 [tool.pixi.pypi-dependencies]
 gusteau-translate = {path=".", editable=true}
@@ -106,8 +109,9 @@ ty = "*"
 [tool.pixi.feature.style.tasks]
 format = "ruff format"
 check = "ruff check --fix"
-lint = "ty check"
-style = [{task="format"}, {task="check"}, {task="lint"}]
+pylint = "ty check"
+ymllint = "yamllint src"
+style = [{task="format"}, {task="check"}, {task="pylint"}, {task="ymllint"}]
 
 [tool.pixi.feature.git.dependencies]
 pre-commit = "*"
