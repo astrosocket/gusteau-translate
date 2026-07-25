@@ -76,6 +76,7 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
             "U_t exponent": "U_t_exponent",
             "a-scale exponent": "a_scale_exponent",
             "h-scale exponent": "h_scale_exponent",
+            "Lossy compression filter": "LossyCompression",
         }
         # add to name_mapping
         for old, new in attribute_mapping.items():

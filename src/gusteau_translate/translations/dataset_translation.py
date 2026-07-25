@@ -80,7 +80,6 @@ class ParticleDatasetTranslation(DatasetTranslation):
     def __post_init__(
         self,
     ):
-        self.name_mapping["Lossy compression filter"] = "LossyCompression"
         super().__post_init__()
         # Shouldn't use these if dataset already has units...
         # self.pipeline.append(DoCosmoUnytsStep())
