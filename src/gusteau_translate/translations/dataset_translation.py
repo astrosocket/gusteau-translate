@@ -8,6 +8,8 @@ from typing import Literal, cast
 import h5py
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from unyt.array import unyt_quantity
+from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
 from ..pipeline import NextStep
@@ -49,13 +51,15 @@ class DatasetTranslation(FieldTranslation):
     Set to `True` to have h5py compute them automatically
     """
 
-    name_mapping: dict[str, str | Literal["[skip]"]] = field(default_factory=dict)
+    name_mapping: dict[str, str | Literal["[skip]"] | Literal["[ignore]"]] = field(
+        default_factory=dict
+    )
     """
     Mapping of names to outcomes. 
     Attribute names that are not included are mapped identically
     Alternatively, map to a valid GUSTEAU attribute name (only containing 
     A-Za-z0-9_) to change the attribute name or "[skip]" to skip translating
-    the attribute.
+    the attribute or "[ignore]" to skip processing the attribute.
     """
 
     def __post_init__(
@@ -75,14 +79,27 @@ class DatasetTranslation(FieldTranslation):
 @dataclass
 class ParticleDatasetTranslation(DatasetTranslation):
     _: KW_ONLY
+    description: str | None = None
     units: str | None = None
+    is_comoving: bool | None = None
+    conversion_factor_cgs: typing.SupportsFloat | None = None
+    conversion_factor_physcgs: typing.SupportsFloat | None = None
+    expression_for_physical_CGS: str | None = None
+    lossy_compression: str | None = None
+    U_I: typing.SupportsFloat | None = None
+    U_L: typing.SupportsFloat | None = None
+    U_M: typing.SupportsFloat | None = None
+    U_T: typing.SupportsFloat | None = None
+    U_t: typing.SupportsFloat | None = None
+    a_scale: typing.SupportsFloat | None = None
+    h_scale: typing.SupportsFloat | None = None
 
     def __post_init__(
         self,
     ):
         super().__post_init__()
         # Shouldn't use these if dataset already has units...
-        # self.pipeline.append(DoCosmoUnytsStep())
+        self.pipeline.append(MakeParticleAttributesStep())
 
 
 @dataclass
@@ -101,7 +118,12 @@ class ConstantParticleDatasetTranslation(ParticleDatasetTranslation):
 
     def __post_init__(self, like_dataset: str | None = None):
         super().__post_init__()
+        old_input = self.input_path
         self.input_path = like_dataset if like_dataset else self.input_path
+        if self.input_description == f"From {old_input}":
+            self.input_description = (
+                f"Constructed a la {like_dataset} with constant {self.constant}"
+            )
 
     @property
     def value(self):
@@ -205,24 +227,114 @@ class DatasetSaveStep(SaveStep):
 
 
 @dataclass
-class DoCosmoUnytsStep(LoadStep):
+class MakeParticleAttributesStep(LoadStep):
     """Load and apply cosmological and unit information"""
 
-    priority: int = LoadStep.priority + 10
+    priority: int = SaveStep.priority + 1
     _: KW_ONLY
-    is_comoving: bool | None = None
-    U_I: typing.SupportsFloat = 0
-    U_L: typing.SupportsFloat = 0
-    U_M: typing.SupportsFloat = 0
-    U_T: typing.SupportsFloat = 0
-    U_t: typing.SupportsFloat = 0
-    a_scale: typing.SupportsFloat = 0
-    h_scale: typing.SupportsFloat = 0
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         if not isinstance(field, ParticleDatasetTranslation):
             raise TranslationClassError(step=self, field=field)
+
+        if field.description is None:
+            raise TranslationError(f"{field.name} is missing a description!")
+
+        unames = [f"U_{u}" for u in "ILMTt"]
+
+        # we could do something clever here with get/setattr, but this is fine
+        field.U_I = 0 if field.U_I is None else field.U_I
+        field.U_L = 0 if field.U_L is None else field.U_L
+        field.U_M = 0 if field.U_M is None else field.U_M
+        field.U_T = 0 if field.U_T is None else field.U_T
+        field.U_t = 0 if field.U_t is None else field.U_t
+        field.a_scale = 0 if field.a_scale is None else field.a_scale
+        field.h_scale = 0 if field.h_scale is None else field.h_scale
+
+        terms = unames + ["a_scale", "h_scale"]
+        a = float(context.quantities.get("a", 1))
+        h = float(context.quantities.get("h", 1))
+        exponents = {term: float(getattr(field, term)) for term in terms}
+
+        registry = cast(
+            UnitRegistry,
+            context.quantities.get("registry", UnitRegistry(unit_system="cgs")),
+        )
+
+        conversion_factor_cgs = unyt_quantity(1, "dimensionless", registry=registry)
+        for uname in unames:
+            conversion_factor_cgs *= (
+                unyt_quantity(1, units=uname, registry=registry) ** exponents[uname]
+            )
+        conversion_factor_cgs /= unyt_quantity(1, "dimensionless", registry=registry)
+
+        conversion_factor_physcgs = cast(
+            unyt_quantity,
+            conversion_factor_cgs
+            * a ** exponents["a_scale"]
+            * h ** exponents["h_scale"],
+        )
+
+        field.conversion_factor_cgs = (
+            conversion_factor_cgs.v
+            if field.conversion_factor_cgs is None
+            else field.conversion_factor_cgs
+        )
+
+        field.conversion_factor_physcgs = (
+            conversion_factor_physcgs.v
+            if field.conversion_factor_physcgs is None
+            else field.conversion_factor_physcgs
+        )
+
+        names: dict[str, str] = {uname: uname for uname in unames}
+        names["a_scale"] = "a"
+        names["h_scale"] = "h"
+
+        unit_str = str(conversion_factor_physcgs.units.get_cgs_equivalent())
+
+        if field.expression_for_physical_CGS is None:
+            field.expression_for_physical_CGS = " ".join(
+                f"{names[term]}^{exponents[term]}" for term in terms
+            )
+
+            field.expression_for_physical_CGS += f" [{unit_str}]"
+
+        field.units = unit_str if field.units is None else field.units
+        field.units = "" if field.units == "-" else field.units
+
+        field.lossy_compression = (
+            "" if field.lossy_compression is None else field.lossy_compression
+        )
+
+        attributes = {
+            "Units": field.units,
+            "ConversionFactorCGS": field.conversion_factor_cgs,
+            "ConversionFactor_PhysCGS": field.conversion_factor_physcgs,
+            "Description": field.description,
+            "Expression_for_physical_CGS": field.expression_for_physical_CGS,
+            "LossyCompression": field.lossy_compression,
+            "U_I_exponent": field.U_I,
+            "U_L_exponent": field.U_L,
+            "U_M_exponent": field.U_M,
+            "U_T_exponent": field.U_T,
+            "U_t_exponent": field.U_t,
+            "a_scale_exponent": field.a_scale,
+            "h_scale_exponent": field.h_scale,
+        }
+        translation = context.translation
+        for name, attr in attributes.items():
+            translation.add_field(
+                translation._default_translation_factory(
+                    obj="ConstantAttributeTranslation",
+                    path="",
+                    input_path="",
+                    output_path=f"{field.output_path}.{name}",
+                    constant=attr,
+                    _explicit=True,
+                )
+            )
 
         # context.translation.add_field(
         #     ConstantAttributeTranslation(
@@ -231,7 +343,6 @@ class DoCosmoUnytsStep(LoadStep):
         #         pipeline=TranslationPipeline(),
         #     )
         # )
-
         next_step(context)
 
 
@@ -252,9 +363,12 @@ class MoveDatasetAttributesStep(TranslationStep):
         translation = context.translation
 
         def visit_attr(path: str, name: str):
-            LOGGER.debug(f"Visiting {path}.{name}")
             full_name = f"{path}.{name}"
             mapping = field.name_mapping.get(name)
+            if mapping == "[ignore]":
+                LOGGER.debug(f"Ignoring {full_name}")
+                return
+            LOGGER.debug(f"Visiting {full_name}")
             output_path = f"{field.output_path}.{name if mapping is None else mapping}"
             # check if attribute already has explicit translation
             if (

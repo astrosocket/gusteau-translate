@@ -1,23 +1,19 @@
 import logging
 import re
 from dataclasses import dataclass
-from typing import cast
 
-import h5py
 import unyt.dimensions as ud
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
-
-from gusteau_translate.translations import ConstantAttributeTranslation
 
 from ..base_steps.base import LoadStep
 from ..pipeline import NextStep
 from ..translation_base import (
     TranslationClassError,
     TranslationContext,
-    TranslationPipeline,
     TranslationStep,
 )
+from ..translations.attribute_translation import process_attribute
 from ..translations.dataset_translation import ParticleDatasetTranslation
 
 LOGGER = logging.getLogger("gusteau_translate")
@@ -74,35 +70,46 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
         LOGGER.debug("Loading Swift-style units")
 
         attribute_mapping = {
-            "Conversion factor to CGS (not including cosmological corrections)": "ConversionFactorCGS",  # noqa: E501
-            "Conversion factor to physical CGS (including cosmological corrections)": "ConversionFactor_PhysCGS",  # noqa: E501
-            "Expression for physical CGS units": "Expression_for_physical_CGS",
-            "U_I exponent": "U_I_exponent",
-            "U_L exponent": "U_L_exponent",
-            "U_M exponent": "U_M_exponent",
-            "U_T exponent": "U_T_exponent",
-            "U_t exponent": "U_t_exponent",
-            "a-scale exponent": "a_scale_exponent",
-            "h-scale exponent": "h_scale_exponent",
-            "Lossy compression filter": "LossyCompression",
+            "conversion_factor_cgs": (
+                "Conversion factor to CGS (not including cosmological corrections)",
+                "ConversionFactorCGS",
+            ),
+            "conversion_factor_physcgs": (
+                "Conversion factor to physical CGS"
+                " (including cosmological corrections)",
+                "ConversionFactor_PhysCGS",
+            ),
+            "description": ("Description", "Description"),
+            "expression_for_physical_CGS": (
+                "Expression for physical CGS units",
+                "Expression_for_physical_CGS",
+            ),
+            "u_I": ("U_I exponent", "U_I_exponent"),
+            "u_L": ("U_L exponent", "U_L_exponent"),
+            "u_M": ("U_M exponent", "U_M_exponent"),
+            "u_T": ("U_T exponent", "U_T_exponent"),
+            "u_t": ("U_t exponent", "U_t_exponent"),
+            "a_scale": ("a-scale exponent", "a_scale_exponent"),
+            "h_scale": ("h-scale exponent", "h_scale_exponent"),
+            "lossy_compression": ("Lossy compression filter", "LossyCompression"),
         }
-        # add to name_mapping
-        for old, new in attribute_mapping.items():
-            field.name_mapping[old] = new
-        # we likely don't have the "Units" attribute, so generate it if necessary
-        if "Units" not in cast(h5py.Dataset, context.infile[field.input_path]).attrs:
-            expression = str(
-                context.infile[field.input_path].attrs[
-                    "Expression for physical CGS units"
-                ]
-            )
-            expression = re.search(r"\[(.+)\]", expression)
-            expression = expression.group(1) if expression else ""
-            context.translation.add_field(
-                ConstantAttributeTranslation(
-                    output_path=f"{field.output_path}.Units",
-                    constant=expression,
-                    pipeline=TranslationPipeline(),
-                )
-            )
+
+        infile = context.infile
+        attrs = infile[field.input_path].attrs
+        for param, (swift_attr_name, gus_attr_name) in attribute_mapping.items():
+            field_value = getattr(field, param, None)
+            attr = attrs.get(swift_attr_name)
+            attr = attr if attr is None else process_attribute(attr, force_scalar=True)
+            setattr(field, param, attr if field_value is None else field_value)
+            field.name_mapping[swift_attr_name] = gus_attr_name
+
+        expression = (
+            ""
+            if field.expression_for_physical_CGS is None
+            else field.expression_for_physical_CGS
+        )
+        expression = re.search(r"\[(.+)\]", expression)
+        field.units = expression.group(1) if expression else ""
+        field.units = "" if field.units == "-" else field.units
+
         next_step(context)
