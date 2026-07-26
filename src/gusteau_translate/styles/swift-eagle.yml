@@ -1133,8 +1133,9 @@ PartType5:
       output_path: Masses
       type: ParticleDatasetTranslation
     FOFGroupIDs:
-      output_path: GroupIDs
       type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep: {path: /BlackHoles/GroupIDs}
     FormationScaleFactors:
       output_path: TransformScaleFactors
       type: ParticleDatasetTranslation
