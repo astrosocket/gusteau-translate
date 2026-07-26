@@ -118,7 +118,11 @@ Cosmology:
     force_scalar: true
     type: AttributeTranslation
   a_end: {force_scalar: true, type: AttributeTranslation}
-  h: {force_scalar: true, type: AttributeTranslation}
+  h:
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: h}
   time_begin:
     input_path: "/Cosmology.time_beg [internal units]"
     force_scalar: true
@@ -252,37 +256,40 @@ RunInfo:
     type: AttributeTranslation
   TotalRuntime: {constant: -1, type: ConstantAttributeTranslation}
 Units:
-  UnitCurrent_CGS:
-    input_path: "/Units.Unit current in cgs (U_I)"
-    force_scalar: true
-    type: AttributeTranslation
-    pipeline:
-      SaveQuantityStep: {name: U_I}
-  UnitLength_CGS:
-    input_path: "/Units.Unit length in cgs (U_L)"
-    force_scalar: true
-    type: AttributeTranslation
-    pipeline:
-      SaveQuantityStep: {name: U_L}
-  UnitMass_CGS:
-    input_path: "/Units.Unit mass in cgs (U_M)"
-    force_scalar: true
-    type: AttributeTranslation
-    pipeline:
-      SaveQuantityStep: {name: U_M}
-  UnitTemperature_CGS:
-    input_path: "/Units.Unit temperature in cgs (U_T)"
-    force_scalar: true
-    type: AttributeTranslation
-    pipeline:
-      SaveQuantityStep: {name: U_T}
-  UnitTime_CGS:
-    input_path: "/Units.Unit time in cgs (U_t)"
-    force_scalar: true
-    type: AttributeTranslation
-    pipeline:
-      SaveQuantityStep: {name: U_t}
-
+  type: GroupTranslation
+  pipeline:
+    CreateUnitRegistryStep: {}
+  children:
+    UnitCurrent_CGS:
+      input_path: "/Units.Unit current in cgs (U_I)"
+      force_scalar: true
+      type: AttributeTranslation
+      pipeline:
+        SaveQuantityStep: {name: U_I}
+    UnitLength_CGS:
+      input_path: "/Units.Unit length in cgs (U_L)"
+      force_scalar: true
+      type: AttributeTranslation
+      pipeline:
+        SaveQuantityStep: {name: U_L}
+    UnitMass_CGS:
+      input_path: "/Units.Unit mass in cgs (U_M)"
+      force_scalar: true
+      type: AttributeTranslation
+      pipeline:
+        SaveQuantityStep: {name: U_M}
+    UnitTemperature_CGS:
+      input_path: "/Units.Unit temperature in cgs (U_T)"
+      force_scalar: true
+      type: AttributeTranslation
+      pipeline:
+        SaveQuantityStep: {name: U_T}
+    UnitTime_CGS:
+      input_path: "/Units.Unit time in cgs (U_t)"
+      force_scalar: true
+      type: AttributeTranslation
+      pipeline:
+        SaveQuantityStep: {name: U_t}
 
 Parameters:
   output_path: /RunInfo/Parameters

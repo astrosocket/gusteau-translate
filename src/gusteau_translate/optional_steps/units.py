@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from typing import cast
 
 import h5py
-import unyt as u
+import unyt.dimensions as ud
 from unyt.array import unyt_quantity
+from unyt.unit_registry import UnitRegistry
 
 from gusteau_translate.translations import ConstantAttributeTranslation
 
@@ -22,19 +23,26 @@ from ..translations.dataset_translation import ParticleDatasetTranslation
 LOGGER = logging.getLogger("gusteau_translate")
 
 
-def _create_unit_registry(context: TranslationContext) -> dict[str, unyt_quantity]:
-    unit_base = {
-        "I": u.ampere,
-        "L": u.cm,
-        "M": u.g,
-        "T": u.kelvin,
-        "t": u.second,
-    }
-    registry = {}
-    for unit_type, unit in unit_base.items():
-        unit_name = f"U_{unit_type}"
-        registry[unit_name] = float(context.quantities.get(unit_name, 1)) * unit
-    return registry
+@dataclass
+class CreateUnitRegistryStep(TranslationStep):
+    """Create a unit registry and add it to the context"""
+
+    def __call__(self, context: TranslationContext, next_step: NextStep):
+        quantities = context.quantities
+        registry = UnitRegistry(unit_system="cgs")
+        dimensions = {
+            "U_I": (ud.current_mks, "A", "A"),
+            "U_L": (ud.length, "cm", "m"),
+            "U_M": (ud.mass, "g", "kg"),
+            "U_T": (ud.temperature, "K", "K"),
+            "U_t": (ud.time, "s", "s"),
+        }
+        for uname, (dimension, cgs_unit, mks_unit) in dimensions.items():
+            mks = unyt_quantity(quantities.get(uname), cgs_unit).to(mks_unit)
+            registry.add(uname, base_value=float(mks.v), dimensions=dimension)
+        LOGGER.debug(registry.lut)
+        context.quantities["registry"] = registry
+        next_step(context)
 
 
 @dataclass
