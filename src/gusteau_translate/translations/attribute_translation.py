@@ -100,6 +100,65 @@ class FileContentsTranslation(AttributeTranslation):
         self._value = new_value
 
 
+def process_attribute(
+    attr: Any,
+    *,
+    dtype: np.typing.DTypeLike | None = None,
+    force_scalar: bool | None = None,
+) -> Any:
+    """Process an attribute into a more useful type
+
+    Convert an attribute in a few ways:
+        1. Change the dtype of an array/number
+        2. Convert fixed-length strings to variable-length
+        3. Coerce values to scalars (eg np.array([1], dtype=np.uint32) -> np.uint32(1))
+
+    Parameters
+    ----------
+    attr:
+        The attribute to process
+
+    dtype: DTypeLike, optional
+        The new type of the value. If None (default), do nothing.
+
+    force_scalar: bool, optional
+        Flag to attempt scalar-coercing. If None (default), do nothing.
+
+    Returns
+    -------
+    :
+        The processed attribute
+
+    Raises
+    ------
+    TranslationError
+        Attribute was an array with more than one element and `force_scale=True`
+    """
+    # attributes are either strings (if a variable length string) or numpy
+    # arrays. We want to convert fixed-length strings to variable-length and
+    # all non-str values to field.dtype, if provided
+    if not isinstance(attr, str):
+        # _value is numpy array
+
+        # convert types if requested
+        attr = attr if dtype is None else attr.astype(dtype)
+
+        # check if using an old-style fixed-length string and convert
+        # attr = str(attr) if isinstance(attr, np.bytes_) else attr
+        if isinstance(attr, np.bytes_):
+            return str(attr)
+
+        if force_scalar:
+            if len(np.array(attr)) == 1:
+                arr_value = np.array(attr)
+                attr = attr if arr_value.ndim == 0 else arr_value[0]
+            else:
+                raise TranslationError(
+                    f"Attempting to force an array {attr} to a scalar!"
+                )
+    return attr
+
+
 @dataclass
 class AttributeLoadStep(LoadStep):
     def __call__(self, context: TranslationContext, next_step: NextStep):
@@ -112,35 +171,12 @@ class AttributeLoadStep(LoadStep):
         path = inpath[0]
         name = inpath[1]
         LOGGER.debug(f"Loading attribute {name} on {path}")
-        field._value = context.infile[path].attrs[name]
-        # attributes are either strings (if a variable length string) or numpy
-        # arrays. We want to convert fixed-length strings to variable-length and
-        # all non-str values to field.dtype, if provided
-        if not isinstance(field._value, str):
-            # _value is numpy array
+        field._value = process_attribute(
+            context.infile[path].attrs[name],
+            dtype=field.dtype,
+            force_scalar=field.force_scalar,
+        )
 
-            # convert types if requested
-            field._value = (
-                field._value
-                if field.dtype is None
-                else field._value.astype(field.dtype)
-            )
-
-            # check if using an old-style fixed-length string and convert
-            field._value = (
-                str(field._value)
-                if isinstance(field._value, np.bytes_)
-                else field._value
-            )
-
-            if field.force_scalar:
-                if len(np.array(field._value)) == 1:
-                    arr_value = np.array(field._value)
-                    field._value = field._value if arr_value.ndim == 0 else arr_value[0]
-                else:
-                    raise TranslationError(
-                        f"Attempting to force an array {field._value} to a scalar!"
-                    )
         next_step(context)
 
 
