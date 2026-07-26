@@ -1039,6 +1039,7 @@ Stars:
         type: ParticleDatasetTranslation
   PreviousParticleTypes:
     type: ConstantParticleDatasetTranslation
+    description: "Particle name index of previous particle type"
     constant: 0
     like_dataset: /PartType4/SplitCounts
 
@@ -1217,6 +1218,6 @@ BlackHoles:
       type: ParticleDatasetTranslation
   PreviousParticleTypes:
     type: ConstantParticleDatasetTranslation
-    # description:
+    description: "Particle name index of previous particle type"
     constant: 0
     like_dataset: /PartType5/SplitCounts
