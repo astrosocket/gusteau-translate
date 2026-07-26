@@ -42,13 +42,15 @@ class default_translation_factory(TranslationFactory):
         out_replace: tuple[str, str] | None = None,
         **kwargs,
     ) -> FieldTranslation[TranslationContext]:
-        obj = obj.lower() if isinstance(obj, str) else obj
-        if isinstance(obj, h5py.Group) or obj == "group":
+        obj_name = obj.lower() if isinstance(obj, str) else obj
+        if isinstance(obj, h5py.Group) or obj_name == "group":
             translation_class = GroupTranslation
-        elif isinstance(obj, h5py.Dataset) or obj == "dataset":
+        elif isinstance(obj, h5py.Dataset) or obj_name == "dataset":
             translation_class = DatasetTranslation
-        elif obj == "particles":
+        elif obj_name == "particles":
             translation_class = ParticleDatasetTranslation
+        elif obj in FieldTranslation._subclasses:
+            translation_class = FieldTranslation._subclasses[obj]
         else:
             translation_class = AttributeTranslation
         input_path = path if input_path is None else input_path
@@ -61,8 +63,13 @@ class default_translation_factory(TranslationFactory):
         output_path = output_path[:-1] if output_path[-1] == "_" else output_path
         input_description = path if input_description is None else input_description
         pipeline = TranslationPipeline() if pipeline is None else pipeline
+        kwargs["_explicit"] = kwargs.get("_explicit", False)
         return translation_class(
-            input_path, input_description, output_path, pipeline, _explicit=False
+            input_path=input_path,
+            input_description=input_description,
+            output_path=output_path,
+            pipeline=pipeline,
+            **kwargs,
         )
 
 
