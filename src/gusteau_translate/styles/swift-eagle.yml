@@ -6,8 +6,8 @@
 GUSTEAU:
   pipeline_additions:
     DatasetTranslation:
-      - LoadSwiftLikeUnitsStep
     ParticleDatasetTranslation:
+      - LoadSwiftLikeUnitsStep
       # - PackingcubesSortStep
 
 # The following fields are in GUSTEAU Spec order
