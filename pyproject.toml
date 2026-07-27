@@ -129,7 +129,7 @@ swift-eagle = "python tests/test_swift-eagle.py"
 
 [tool.pixi.feature.docs.dependencies]
 griffe-pydantic = "*"
-zensical = "*"
+zensical = ">=0.0.51,<0.0.52"
 mkdocstrings-python = "*"
 mkdocstrings = "*"
 

@@ -148,7 +148,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h366c992_103.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/watchdog-6.0.0-py314h9e666f3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-h280c20c_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.50-py310h1570de5_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.51-py310h1570de5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.6.17-hbd8a1cb_0.conda
@@ -1241,10 +1241,10 @@ packages:
     - yaml >=0.2.5,<0.3.0a0
   size: 85189
   timestamp: 1753484064210
-- conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.50-py310h1570de5_0.conda
+- conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.51-py310h1570de5_0.conda
   noarch: python
-  sha256: c49a0b162fcf4bca88c3e19770d58819f5cee4b5a1387a136f0ee115f3fa65b9
-  md5: ce31584e2bc6683aefe28bca9a29d4a6
+  sha256: e7294e8353d470bb3728ec7d3ffcff9552806d8668d2174315985c692942c16b
+  md5: f829af948bc8d508a4eb2a1405c786f0
   depends:
   - python
   - click >=8.1.8
@@ -1255,8 +1255,8 @@ packages:
   - pyyaml >=6.0.2
   - tomli >=2.4.0
   - jinja2 >=3.1
-  - __glibc >=2.17,<3.0.a0
   - libgcc >=14
+  - __glibc >=2.17,<3.0.a0
   - _python_abi3_support 1.*
   - cpython >=3.10
   constrains:
@@ -1264,8 +1264,8 @@ packages:
   license: MIT
   license_family: MIT
   run_exports: {}
-  size: 6897352
-  timestamp: 1783622370547
+  size: 6905096
+  timestamp: 1784341093483
 - conda: https://conda.anaconda.org/conda-forge/linux-64/zeromq-4.3.5-h09e67af_11.conda
   sha256: dc9f28dedcb5f35a127fad2d847674d2833369dd616d294e423b8997df31d8a8
   md5: 96b08867e21d4694fa5c2c226e6581b0
