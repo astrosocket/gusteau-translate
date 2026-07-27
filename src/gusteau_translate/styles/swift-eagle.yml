@@ -493,8 +493,9 @@ PartType0:
       output_path: Feedback/AGN/Entropies_before_last_event
       type: ParticleDatasetTranslation
     FOFGroupIDs:
-      output_path: GroupIDs
       type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep: {path: /Gas/GroupIDs}
     HeatedByAGNFeedback:
       output_path: Feedback/AGN/Heated_by_feedback
       type: ParticleDatasetTranslation
@@ -684,8 +685,9 @@ PartType1:
     # Note: ParticleIDs, Coordinates, Velocities, Masses, Potentials,
     # can be processed via the auto-discovery
     FOFGroupIDs:
-      output_path: GroupIDs
       type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep: {path: /ColdDarkMatter/GroupIDs}
 
 
 PartType4:
