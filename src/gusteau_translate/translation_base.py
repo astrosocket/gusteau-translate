@@ -13,11 +13,11 @@ from typing import Any, ClassVar, Protocol, Self, cast
 
 import h5py
 
-from .config import TranslationOptions, _default_translation_options
+from .config import LOGGER_NAME, TranslationOptions, _default_translation_options
 from .pipeline import ErrorHandler, NextStep, Pipeline, PipelineError, PipelineStep
 from .specification import GUSTEAU, DatasetSpec, GroupSpec
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 type dict_info_type = (
     int | float | str | list[dict_info_type] | dict[str, dict_info_type]

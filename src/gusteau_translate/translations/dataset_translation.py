@@ -12,6 +12,7 @@ from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
+from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
     FieldTranslation,
@@ -23,7 +24,7 @@ from ..translation_base import (
 )
 from .misc_translation import SkipTranslation
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 def _validate_columns(columns: ArrayLike | None) -> int | NDArray[np.int_] | None:

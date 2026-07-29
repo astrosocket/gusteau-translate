@@ -7,19 +7,19 @@ from typing import Literal, cast
 import ruamel.yaml as pyyaml
 
 import gusteau_translate
-from gusteau_translate.config import TranslationOptions, ValidationOptions
-from gusteau_translate.styles import parse_style_file
-from gusteau_translate.translations.translation_loader import (
+
+from .config import LOGGER_NAME, TranslationOptions, ValidationOptions
+from .snapshot import Snapshot
+from .styles import parse_style_file
+from .translation_base import (
+    Translation,
+)
+from .translations.translation_loader import (
     default_translation_factory,
     from_dict,
 )
 
-from .snapshot import Snapshot
-from .translation_base import (
-    Translation,
-)
-
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 def parse_arguments(argv=None) -> argparse.Namespace:
@@ -211,7 +211,7 @@ def translate_and_validate(snapshot: Snapshot, args: argparse.Namespace) -> bool
 
 
 def cli(argv=None) -> bool:
-    file_handler = logging.FileHandler(filename="gusteau_translate.log", mode="w")
+    file_handler = logging.FileHandler(filename="alchemize.log", mode="w")
     stdout_handler = logging.StreamHandler(sys.stdout)
     logging.basicConfig(handlers=[file_handler, stdout_handler])
 

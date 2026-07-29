@@ -4,8 +4,8 @@ from typing import LiteralString
 import numpy as np
 from sympy import symbols, sympify
 
-from gusteau_translate.pipeline import NextStep
-from gusteau_translate.translation_base import (
+from ..pipeline import NextStep
+from ..translation_base import (
     TranslationContext,
     TranslationStep,
 )

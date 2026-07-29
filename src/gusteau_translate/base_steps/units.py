@@ -5,10 +5,11 @@ import unyt.dimensions as ud
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
+from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import TranslationContext, TranslationStep
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 @dataclass

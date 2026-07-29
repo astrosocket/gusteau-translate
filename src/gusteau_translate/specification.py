@@ -11,9 +11,9 @@ from typing import Any, ClassVar, Literal, cast
 import h5py
 import numpy as np
 
-from gusteau_translate.config import ValidationOptions
+from .config import LOGGER_NAME, ValidationOptions
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 type h5obj = h5py.Group | h5py.Dataset
 type integer_type = int | np.int_ | np.int32 | np.uint32 | np.uint64

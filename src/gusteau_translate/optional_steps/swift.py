@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 
 from ..base_steps.base import LoadStep
+from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
     TranslationClassError,
@@ -12,7 +13,7 @@ from ..translation_base import (
 from ..translations.attribute_translation import process_attribute
 from ..translations.dataset_translation import ParticleDatasetTranslation
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 @dataclass

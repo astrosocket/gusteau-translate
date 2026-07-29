@@ -1,6 +1,8 @@
 import dataclasses
 from dataclasses import KW_ONLY, dataclass
 
+LOGGER_NAME = "alchemize"
+
 
 @dataclass
 class TranslationOptions:

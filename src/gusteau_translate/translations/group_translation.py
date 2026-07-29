@@ -6,6 +6,7 @@ from typing import cast
 import h5py
 
 from ..base_steps.base import LoadStep, SaveStep
+from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
     FieldTranslation,
@@ -15,7 +16,7 @@ from ..translation_base import (
     TranslationStep,
 )
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 @dataclass

@@ -3,13 +3,14 @@ from dataclasses import KW_ONLY, dataclass
 
 import h5py
 
-from gusteau_translate.pipeline import NextStep
-from gusteau_translate.translation_base import (
+from ..config import LOGGER_NAME
+from ..pipeline import NextStep
+from ..translation_base import (
     TranslationContext,
     TranslationStep,
 )
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 @dataclass

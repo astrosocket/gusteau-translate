@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from ..base_steps.base import LoadStep, SaveStep
+from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..styles import read_style_file
 from ..translation_base import (
@@ -19,7 +20,7 @@ from ..translation_base import (
     dict_info_type,
 )
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 @dataclass

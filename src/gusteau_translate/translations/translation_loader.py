@@ -4,6 +4,7 @@ from typing import Any
 
 import h5py
 
+from ..config import LOGGER_NAME
 from ..translation_base import (
     FieldTranslation,
     Translation,
@@ -22,7 +23,7 @@ from ..translations.dataset_translation import (
     ParticleDatasetTranslation,
 )
 
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 class TranslationParseError(Exception): ...

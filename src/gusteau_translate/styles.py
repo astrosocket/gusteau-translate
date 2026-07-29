@@ -10,7 +10,9 @@ from typing import Any
 import ruamel.yaml as pyyaml
 import tomlkit
 
-LOGGER = logging.getLogger("gusteau_translate")
+from .config import LOGGER_NAME
+
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 def _load_yaml_file(

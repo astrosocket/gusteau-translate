@@ -6,26 +6,26 @@ from typing import Literal
 
 import h5py
 
-from gusteau_translate.pipeline import ErrorHandler
-from gusteau_translate.specification import (
+from .config import (
+    LOGGER_NAME,
+    TranslationOptions,
+    ValidationOptions,
+    _default_translation_options,
+    _default_validation_options,
+)
+from .pipeline import ErrorHandler
+from .specification import (
     ValidationError,
     get_spec_from_version,
 )
-from gusteau_translate.translation_base import (
+from .translation_base import (
     Translation,
     TranslationContext,
     dummy_field,
     translation_error_handler,
 )
 
-from .config import (
-    TranslationOptions,
-    ValidationOptions,
-    _default_translation_options,
-    _default_validation_options,
-)
-
-LOGGER = logging.getLogger("gusteau_translate")
+LOGGER = logging.getLogger(LOGGER_NAME)
 
 
 class Snapshot:
