@@ -313,7 +313,6 @@ PartType0:
     - Hydrogen
     - Abundance
     - NumberDensity
-    - MassDensity
     - Subgrid
     - Particles
     - Hydro
@@ -378,15 +377,6 @@ PartType0:
               type: CreateGroupTranslation
     NumberDensities:
       description: "Number density-based chemical abundances"
-      tags: []
-      type: CreateGroupTranslation
-      children:
-        Hydrogen:
-          description: "Hydrogen chemical quantities"
-          tags: []
-          type: CreateGroupTranslation
-    MassDensities:
-      description: "Mass density-based chemical abundances"
       tags: []
       type: CreateGroupTranslation
       children:
@@ -461,13 +451,8 @@ PartType0:
       output_path: Subgrid/AveragedStarFormationRates
       type: ParticleDatasetTranslation
     AtomicHydrogenMasses:
-      # This field might need to be scaled/transformed in some way. I don't
-      # understand exactly what it's supposed to be
-      output_path: MassDensities/Hydrogen/H
+      output_path: Subgrid/AtomicHydrogenMasses
       type: ParticleDatasetTranslation
-      pipeline:
-        LinkStep:
-          path: /Gas/MassDensities/Hydrogen/Hydrogen
     ComptonYParameters:
       output_path: Subgrid/ComptonYParameters
       type: ParticleDatasetTranslation
