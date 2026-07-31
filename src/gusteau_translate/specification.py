@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import itertools
+import json
 import logging
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from enum import Enum, auto
@@ -1209,6 +1210,28 @@ class GUSTEAU:
     required_tlgs = {tlg.name: tlg for tlg in [header, code, cosmo, runinfo, units]}
     optional_tlgs = {tlg.name: tlg for tlg in [cubes]}
 
+    def _validate_metadata_attribute(
+        self, h5_file: h5py.File, *args, validation_info: dict[str, Any], **kwargs
+    ) -> Literal[True]:
+        """
+        Special function to validate the /.Metadata attribute
+
+        Since .Metadata needs to be a JSON formatted string, we'll check that's the case
+        In the future, we may also check the _contents_, since we shouldn't
+        need to process anything for that
+        """
+
+        metadata_spec = AttributeSpec("Metadata", attr_type=str)
+        metadata_spec.validate(h5_file, validation_info=validation_info, prefix="")
+
+        metadata = h5_file.attrs["Metadata"]
+        try:
+            json.loads(metadata)
+        except json.JSONDecodeError as je:
+            raise ValidationError("Metadata is not valid JSON") from je
+
+        return True
+
     def validate(
         self, h5_file: h5py.File, *, options: ValidationOptions | None = None
     ) -> Literal[True]:
@@ -1270,6 +1293,10 @@ class GUSTEAU:
         LOGGER.debug(f"Total Soft/External Links: {len(links)}")
         not_visited = cast(set[str], h5_file.keys()) - visited_groups - links
         LOGGER.info(f"Did not validate: {not_visited}")
+
+        self._validate_metadata_attribute(
+            h5_file, validation_info=validation_info, options=options
+        )
 
         return True
 

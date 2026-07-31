@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import partial
 from pathlib import Path
@@ -26,6 +27,62 @@ from .translation_base import (
 )
 
 LOGGER = logging.getLogger(LOGGER_NAME)
+
+
+def _create_field_metadata(outfile: h5py.File):
+
+    metadata = {}
+
+    def visit_item(
+        name: str,
+        obj: h5py.Group
+        | h5py.Dataset
+        | h5py.HardLink
+        | h5py.SoftLink
+        | h5py.ExternalLink,
+    ):
+        d = metadata
+        for n in name.split("/"):
+            if n not in d:
+                break
+            d = d[n]
+        # assuming lexicographic traversal!
+        # so /Group comes before /Group/Dataset
+        if isinstance(obj, h5py.HardLink):
+            return
+        if isinstance(obj, h5py.SoftLink | h5py.ExternalLink):
+            shape = []
+            attrs = {}
+            type_ = "Link"
+            path = obj.path
+        else:
+            if isinstance(obj, h5py.Group):
+                shape = [len(obj.keys())]
+                type_ = "Group"
+            else:
+                shape = obj.shape
+                type_ = f"Dataset{obj.dtype}"
+            path = name
+            attrs = {
+                str(a_name): {
+                    "-shape": [] if isinstance(a, str) else a.shape,
+                    "-type": type(a).__name__,
+                    "-attrs": {},
+                    "-path": f"{name}.{a_name}",
+                }
+                for a_name, a in obj.attrs.items()
+            }
+        d[n] = {
+            "-shape": shape,
+            "-type": type_,
+            "-attrs": attrs,
+            "-path": path,
+        }
+
+    outfile.visititems(visit_item)
+    outfile.visititems_links(visit_item)
+
+    outfile.attrs.create("Metadata", json.dumps(metadata, separators=(",", ":")))
 
 
 class Snapshot:
@@ -59,7 +116,9 @@ class Snapshot:
 
         with (
             h5py.File(self.path) as infile,
-            h5py.File(new_snapshot_path, "w") as outfile,
+            h5py.File(
+                new_snapshot_path, "w", libver="v200", track_order=True
+            ) as outfile,
         ):
             # Start with header, since that's most important
             LOGGER.debug("Initializing context")
@@ -139,6 +198,9 @@ class Snapshot:
 
             LOGGER.info("Performing any remaining translations")
             translation.apply_unused_translations(context, error_handler)
+
+            LOGGER.info("Writing /.Metadata attribute")
+            _create_field_metadata(outfile)
 
         return True
 
