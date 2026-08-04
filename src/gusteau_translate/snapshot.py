@@ -1,5 +1,6 @@
 import json
 import logging
+import tempfile
 from functools import partial
 from pathlib import Path
 from traceback import TracebackException
@@ -119,11 +120,12 @@ class Snapshot:
             h5py.File(
                 new_snapshot_path, "w", libver="v200", track_order=True
             ) as outfile,
+            tempfile.TemporaryDirectory() as tempdir,
         ):
             # Start with header, since that's most important
             LOGGER.debug("Initializing context")
             context = TranslationContext(
-                infile, outfile, translation, dummy_field, options=options
+                infile, outfile, tempdir, translation, dummy_field, options=options
             )
 
             LOGGER.debug("Initializing error handler")

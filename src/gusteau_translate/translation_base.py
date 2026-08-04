@@ -47,6 +47,7 @@ class TranslationClassError(TranslationError):
 class TranslationContext:
     infile: h5py.File
     outfile: h5py.File
+    tempdir: str
     translation: Translation
     field: FieldTranslation
     quantities: dict[str, Any] = dataclasses.field(default_factory=dict)
