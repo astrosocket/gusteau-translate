@@ -439,18 +439,14 @@ class Translation:
         if isinstance(field, FieldTranslation):
             field_list = [field]
         elif isinstance(field, str):
-            field_list = (
-                [field]
-                if isinstance(field, FieldTranslation)
-                else self.in2out.setdefault(
-                    field,
-                    [
-                        self._default_translation_factory(
-                            obj,
-                            field,
-                        )
-                    ],
-                )
+            field_list = self.in2out.setdefault(
+                field,
+                [
+                    self._default_translation_factory(
+                        obj,
+                        field,
+                    )
+                ],
             )
         else:
             field_list = field
