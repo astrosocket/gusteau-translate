@@ -126,7 +126,7 @@ pytest-cov = "*"
 [tool.pixi.feature.ci.tasks]
 test = "pytest"
 swift-eagle = "python tests/run_swift-eagle.py"
-compare-swift-eagle = "python tests/test_swift-eagle"
+compare-swift-eagle = "python tests/test_swift-eagle.py"
 test-swift-eagle = [{task="swift-eagle"}, {task="compare-swift-eagle"}]
 
 [tool.pixi.feature.docs.dependencies]
