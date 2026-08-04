@@ -286,6 +286,10 @@ class TranslationFactory(Protocol):
         obj: Any,
         path: str,
         *args,
+        input_path: str | None = None,
+        input_description: str | None = None,
+        output_path: str | None = None,
+        pipeline: TranslationPipeline | None = None,
         **kwargs,
     ) -> FieldTranslation[TranslationContext]: ...
 
