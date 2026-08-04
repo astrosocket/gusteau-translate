@@ -42,10 +42,24 @@ class DatasetTranslation(FieldTranslation):
     Index or list of indices representing the column in the 2D dataset to load
     1D datasets or datasets that use all the columns should specify None
     """
-    compression: str | Literal["gzip", "lzf", "szip"] | int | None = None
+    compression: str | Literal["gzip", "lzf", "szip"] | int | tuple[int, ...] | None = (
+        None
+    )
     """Compression used by this dataset"""
     compression_opts: int | dict[str, str | int | float] | None = None
     """Compression options used by this dataset"""
+    scale_offset_filter: int | None = None
+    """Whether to apply the scale offset filter to this dataset
+    Default is to use the source dataset's scale_offset value
+    """
+    shuffle_filter: bool | None = None
+    """Whether to apply the shuffle filter to this dataset
+    Default is to use the source dataset's shuffle_filter flag
+    """
+    fletcher32_filter: bool | None = None
+    """Whether to apply the shuffle filter to this dataset
+    Default is to use the source dataset's fletcher32_filter flag
+    """
     chunks: tuple[int, ...] | bool | None = None
     """
     Chunk division used by dataset. 
@@ -158,10 +172,32 @@ class DatasetLoadStep(LoadStep):
             if field.compression is None
             else field.compression
         )
+        if field.compression == "unknown":
+            # need to read the filter ids/filter_names field
+            field.compression = tuple(
+                i
+                for i, name in zip(indata.filter_ids, indata.filter_names, strict=True)
+                if name not in ["scaleoffset", "shuffle", "deflate", "fletcher32"]
+            )
         field.compression_opts = (
             cast(type(field.compression_opts), indata.compression_opts)
             if field.compression_opts is None
             else field.compression_opts
+        )
+        field.scale_offset_filter = (
+            cast(int | None, indata.scaleoffset)
+            if field.scale_offset_filter is None
+            else field.scale_offset_filter
+        )
+        field.shuffle_filter = (
+            cast(bool | None, indata.shuffle)
+            if field.shuffle_filter is None
+            else field.shuffle_filter
+        )
+        field.fletcher32_filter = (
+            cast(bool | None, indata.fletcher32)
+            if field.fletcher32_filter is None
+            else field.fletcher32_filter
         )
         field.chunks = (
             cast(tuple[int, ...] | None, indata.chunks)
@@ -188,37 +224,26 @@ class DatasetSaveStep(SaveStep):
         if not isinstance(field, DatasetTranslation):
             raise TranslationClassError(step=self, field=field)
         LOGGER.debug(f"Saving dataset {field.output_path}")
-        match field.compression:
-            case "":
-                context.outfile.create_dataset(name=field.output_path, data=field.value)
-            case "lzf" | "szip":
-                context.outfile.create_dataset(
-                    name=field.output_path,
-                    data=field.value,
-                    compression=field.compression,
-                    chunks=field.chunks,
-                )
-            case "gzip":
-                context.outfile.create_dataset(
-                    name=field.output_path,
-                    data=field.value,
-                    compression="gzip",
-                    compression_opts=field.compression_opts,
-                    chunks=field.chunks,
-                )
-            case _:
-                if isinstance(field.compression_opts, int):
-                    field.compression_opts = {
-                        "compression_opts": field.compression_opts
-                    }
-                elif field.compression_opts is None:
-                    field.compression_opts = {}
-                context.outfile.create_dataset(
-                    name=field.output_path,
-                    data=field.value,
-                    **field.compression_opts,
-                    chunks=field.chunks,
-                )
+        kwds = {}
+        possible_kwds = {
+            "compression": field.compression,
+            "compression_opts": field.compression_opts,
+            "scaleoffset": field.scale_offset_filter,
+            "shuffle": field.shuffle_filter,
+            # "fletcher32": field.fletcher32_filter,
+            # We're currently ignoring the fletcher32 filter because h5py
+            # doesn't allow fletcher32+scale_offset at the same time, even
+            # though it should be valid for most compression options, in the
+            # high-level API (see h5py issue #953 and
+            # [comment](https://github.com/h5py/h5py/blob/6bce6d4e74b6c49fbb5614b1fdd0a5c27ad21904/h5py/_hl/filters.py#L241-L247))
+            # Since we're dealing with very large datasets and not yet in
+            # production, fletcher32 is the more convenient option to drop
+        }
+        for kwd, attr in possible_kwds.items():
+            if attr is not None:
+                kwds[kwd] = attr
+        context.outfile.create_dataset(name=field.output_path, data=field.value, **kwds)
+
         # add source description attribute
         context.outfile[field.output_path].attrs["Source_Description"] = (
             field.input_description
