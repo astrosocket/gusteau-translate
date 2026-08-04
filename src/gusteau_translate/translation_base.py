@@ -368,10 +368,27 @@ class Translation:
         self.in2out.setdefault(field.input_path, []).append(field)
         self.out2in[field.output_path] = field
 
+    def get_field_from_output(self, output_path: str) -> FieldTranslation | None:
+        return self.out2in.get(output_path)
+
+    def get_fields_from_input(self, input_path: str) -> list[FieldTranslation]:
+        return self.in2out.get(input_path, [])
+
     def remove_field(self, field: FieldTranslation) -> FieldTranslation | None:
         if field.input_path in self.in2out:
             self.in2out[field.input_path].remove(field)
         return self.out2in.pop(field.output_path, None)
+
+    def remove_field_from_output(self, output_path: str) -> FieldTranslation | None:
+        field = self.get_field_from_output(output_path)
+        return None if field is None else self.remove_field(field)
+
+    def remove_fields_from_input(self, input_path: str) -> list[FieldTranslation]:
+        """Remove all fields matching input path, returning removed fields"""
+        fields = self.in2out.get(input_path, [])
+        for field in fields:
+            self.out2in.pop(field.output_path)
+        return fields
 
     def set_priority_fields(self, *field_list: str, **field_dict: str):
         """
