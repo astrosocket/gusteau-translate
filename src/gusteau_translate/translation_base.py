@@ -304,7 +304,8 @@ class Translation:
     gusteau: dict[str, Any]
     _SPEC: ClassVar[GUSTEAU] = GUSTEAU()
     _default_translation_factory: TranslationFactory
-    _pipeline_additions: dict[str, list[TranslationStep]]
+    _pipeline_class_additions: dict[str, list[TranslationStep]]
+    _pipeline_path_additions: dict[str, list[TranslationStep]]
     _priority_fields: list[FieldTranslation]
 
     def __init__(
@@ -323,25 +324,42 @@ class Translation:
 
     def _process_gusteau(self, gusteau: dict[str, Any] | None = None):
         self.gusteau = {} if gusteau is None else gusteau
-        pipeline_additions = cast(
-            dict[str, list[str]], self.gusteau.get("pipeline_additions", {})
+        pipeline_class_additions = cast(
+            dict[str, list[str | TranslationStep]],
+            self.gusteau.get("pipeline_class_additions", {}),
         )
-        self._pipeline_additions = {
+        self._pipeline_class_additions = {
             translation_class: [
-                TranslationStep._subclasses[name]() for name in step_names
+                TranslationStep._subclasses[step]() if isinstance(step, str) else step
+                for step in steps
             ]
-            for translation_class, step_names in pipeline_additions.items()
-            if step_names
+            for translation_class, steps in pipeline_class_additions.items()
+            if steps
         }
-        self._pipeline_additions["FieldTranslation"] = self._pipeline_additions.get(
-            "FieldTranslation", []
+        self._pipeline_class_additions["FieldTranslation"] = (
+            self._pipeline_class_additions.get("FieldTranslation", [])
         )
-        self._pipeline_additions["FieldTranslation"].extend(
-            self._pipeline_additions.get("any", [])
+        self._pipeline_class_additions["FieldTranslation"].extend(
+            self._pipeline_class_additions.get("any", [])
         )
-        self._pipeline_additions["FieldTranslation"].extend(
-            self._pipeline_additions.get("all", [])
+        self._pipeline_class_additions["FieldTranslation"].extend(
+            self._pipeline_class_additions.get("all", [])
         )
+
+        pipeline_path_additions = cast(
+            dict[str, list[str | TranslationStep]] | None,
+            self.gusteau.get("pipeline_path_additions", {}),
+        )
+        pipeline_path_additions = (
+            {} if pipeline_path_additions is None else pipeline_path_additions
+        )
+        self._pipeline_path_additions = {
+            path_pattern: [
+                TranslationStep._subclasses[step]() if isinstance(step, str) else step
+                for step in step_names
+            ]
+            for path_pattern, step_names in pipeline_path_additions.items()
+        }
 
     def _iterate_fields_only(
         self, group: GroupSpec, map_: dict[str, FieldTranslation], *, start_path=""
@@ -360,11 +378,20 @@ class Translation:
 
     def add_field(self, field: FieldTranslation):
         LOGGER.debug(f"Adding {field.__class__.__name__} {field.log_name}")
+
+        # add pipeline additions via class
         class_ = field.__class__
         while class_:
-            steps = self._pipeline_additions.get(class_.__name__, [])
+            steps = self._pipeline_class_additions.get(class_.__name__, [])
             field.pipeline.extend([] if steps is None else steps)
             class_ = class_.__base__
+
+        # add pipeline additions via output path
+        output_path = Path(field.output_path)
+        for pattern, steps in self._pipeline_path_additions.items():
+            if output_path.full_match(pattern, case_sensitive=True):
+                field.pipeline.extend([] if steps is None else steps)
+
         self.in2out.setdefault(field.input_path, []).append(field)
         self.out2in[field.output_path] = field
 

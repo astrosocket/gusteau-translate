@@ -4,11 +4,17 @@
 # Options are specified in the GUSTEAU group
 # This section should **not** be read as part of the specification
 GUSTEAU:
-  pipeline_additions:
-    DatasetTranslation:
+  pipeline_class_additions:
+    # Steps to add to every translation that has the listed (super)class
     ParticleDatasetTranslation:
       - LoadSwiftLikeUnitsStep
-      # - PackingcubesSortStep
+
+  pipeline_path_additions:
+    # Steps to add to every translation whose **output** path matches
+    # Patterns are matched a la pathlib's
+    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    # with case-sensitive set to True
+
 
 # The following fields are in GUSTEAU Spec order
 
