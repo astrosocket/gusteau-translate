@@ -2,10 +2,11 @@ from gusteau_translate import cli
 
 cli(
     [
-        "-vvf",
-        "--skip-data",
+        "-vvf",  # debug level verbosity + force overwrite
+        # "--skip-data",
         "-t",
         "swift-eagle",
+        "--packing-cubes",
         "tests/snapshot_090.hdf5",
         "tests/gusteau.hdf5",
     ]
