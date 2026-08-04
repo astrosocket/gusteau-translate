@@ -4,7 +4,7 @@ import tempfile
 from functools import partial
 from pathlib import Path
 from traceback import TracebackException
-from typing import Literal
+from typing import Literal, cast
 
 import h5py
 import unyt.dimensions as ud
@@ -29,6 +29,7 @@ from .translation_base import (
     dummy_field,
     translation_error_handler,
 )
+from .translations import GroupTranslation
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -107,6 +108,55 @@ def create_unit_registry(context: TranslationContext):
     context.quantities["registry"] = registry
 
 
+def initialize_particle_groups(
+    particle_groups: list[str], context: TranslationContext, error_handler: ErrorHandler
+):
+    translation = context.translation
+    LOGGER.debug(f"Initializing the {particle_groups} particle groups for packingcubes")
+    for pg in particle_groups:
+        output_path = f"/{pg}"
+        field = translation.get_field_from_output(output_path)
+        if field is None:
+            LOGGER.warning(
+                f"Particle group {pg} does not have a translation defined."
+                " Creating one using default factory"
+            )
+            field = cast(
+                GroupTranslation,
+                translation._default_translation_factory(
+                    "group",
+                    output_path,
+                ),
+            )
+            field.has_particles = True
+
+        translation.apply_translation(field, context, error_handler)
+
+
+def _process_packingcubes(
+    context: TranslationContext,
+    error_handler: ErrorHandler,
+    options: TranslationOptions,
+):
+    particle_groups = options.packingcubes
+    particle_groups = (
+        context.quantities["ParticleNames"]
+        if particle_groups[0] == "*"
+        else particle_groups
+    )
+    # ensure particle groups are present
+    # (note that this might require translations)
+    translation = context.translation
+    initialize_particle_groups(particle_groups, context, error_handler)
+    LOGGER.debug(
+        f"Prioritizing the Coordinates dataset for the {particle_groups}"
+        " groups for packingcubes processing"
+    )
+    translation.set_priority_fields(
+        **{f"/{pg}/Coordinates": "ParticleDatasetTranslation" for pg in particle_groups}
+    )
+
+
 class Snapshot:
     path: Path
     """Path to this snapshot file"""
@@ -179,6 +229,13 @@ class Snapshot:
 
             # Now that we have the required group Units, we can make the registry
             create_unit_registry(context)
+
+            if options.packingcubes:
+                _process_packingcubes(
+                    context,
+                    error_handler,
+                    options,
+                )
 
             self.directory.update(
                 translation.apply_explicit_translations(
