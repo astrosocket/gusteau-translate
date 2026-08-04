@@ -30,8 +30,8 @@ class GroupTranslation(FieldTranslation):
     def __post_init__(self):
         self.pipeline.append(GroupSaveStep())
         self.pipeline.append(GroupLoadStep())
-        if self.input_path and self.input_path != self.output_path:
-            self.pipeline.append(GroupMoveStep())
+        if self.input_path:
+            self.pipeline.append(ProcessGroupChildrenStep())
         if self.has_particles and (self.description is None or self.tags is None):
             raise TranslationError(
                 f"Particle Group {self.name} must specify"
@@ -78,15 +78,17 @@ class GroupSaveStep(SaveStep):
 
 
 @dataclass
-class GroupMoveStep(TranslationStep):
-    priority: int = -50
+class ProcessGroupChildrenStep(TranslationStep):
+    priority: int = SaveStep.priority + 50
     write_out: bool = False
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         if not isinstance(field, GroupTranslation):
             raise TranslationClassError(step=self, field=field)
-        LOGGER.debug(f"Moving group {field.input_path} to {field.output_path}")
+        LOGGER.debug(
+            f"Processing children of {field.input_path} --> {field.output_path}"
+        )
 
         group = cast(h5py.Group, context.infile[field.input_path])
 
@@ -96,7 +98,10 @@ class GroupMoveStep(TranslationStep):
             name: str, out_name: str, obj: h5py.Group | h5py.Dataset | str
         ):
             LOGGER.debug(f"Visiting {name}")
-            if name in translation.in2out or out_name in translation.out2in:
+            child_fields = translation.get_fields_from_input(name)
+            child_field = translation.get_field_from_output(out_name)
+            child_fields.extend([] if child_field is None else [child_field])
+            if child_fields:
                 LOGGER.debug(f"Skipping already defined field {name}")
                 return
             obj = (
@@ -120,6 +125,7 @@ class GroupMoveStep(TranslationStep):
             out_name = name.replace(field.input_path, field.output_path)
             visit_object(name, out_name, obj)
             if isinstance(obj, h5py.Dataset):
+                # datasets handle their own attributes
                 return
             for attr in obj.attrs:
                 visit_object(f"{name}.{attr}", f"{out_name}.{attr}", "")
