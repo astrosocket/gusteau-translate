@@ -7,6 +7,9 @@ from traceback import TracebackException
 from typing import Literal
 
 import h5py
+import unyt.dimensions as ud
+from unyt.array import unyt_quantity
+from unyt.unit_registry import UnitRegistry
 
 from .config import (
     LOGGER_NAME,
@@ -86,6 +89,24 @@ def _create_field_metadata(outfile: h5py.File):
     outfile.attrs.create("Metadata", json.dumps(metadata, separators=(",", ":")))
 
 
+def create_unit_registry(context: TranslationContext):
+    """Create a unit registry and add it to the context"""
+    quantities = context.quantities
+    registry = UnitRegistry(unit_system="cgs")
+    dimensions = {
+        "U_I": (ud.current_mks, "A", "A"),
+        "U_L": (ud.length, "cm", "m"),
+        "U_M": (ud.mass, "g", "kg"),
+        "U_T": (ud.temperature, "K", "K"),
+        "U_t": (ud.time, "s", "s"),
+    }
+    for uname, (dimension, cgs_unit, mks_unit) in dimensions.items():
+        mks = unyt_quantity(quantities.get(uname), cgs_unit).to(mks_unit)
+        registry.add(uname, base_value=float(mks.v), dimensions=dimension)
+    LOGGER.debug(f"Created unit registry with lut: {registry.lut}")
+    context.quantities["registry"] = registry
+
+
 class Snapshot:
     path: Path
     """Path to this snapshot file"""
@@ -155,6 +176,9 @@ class Snapshot:
                     translation.get_required_translations(), context, error_handler
                 )
             )
+
+            # Now that we have the required group Units, we can make the registry
+            create_unit_registry(context)
 
             self.directory.update(
                 translation.apply_explicit_translations(
