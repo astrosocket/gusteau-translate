@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import Any
 
 import h5py
@@ -13,6 +12,7 @@ from ..translation_base import (
     TranslationPipeline,
     TranslationStep,
     dict_info_type,
+    normalize_output_path,
 )
 from ..translations import (
     AttributeTranslation,
@@ -60,8 +60,7 @@ class default_translation_factory(TranslationFactory):
             input_path = input_path.replace(*in_replace)
         if out_replace is not None:
             output_path = output_path.replace(*out_replace)
-        output_path = re.sub(pattern=r"[^a-zA-Z0-9_./]+", repl="_", string=output_path)
-        output_path = output_path[:-1] if output_path[-1] == "_" else output_path
+        output_path = normalize_output_path(output_path)
         input_description = path if input_description is None else input_description
         pipeline = TranslationPipeline() if pipeline is None else pipeline
         kwargs["_explicit"] = kwargs.get("_explicit", False)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import logging
+import re
 from abc import abstractmethod
 from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, dataclass
@@ -205,6 +206,16 @@ class FieldTranslation[TranslationContext]:
 
         docpart[self.name] = field_table
         return field_table
+
+
+def normalize_output_path(output_path: str) -> str:
+    """Normalize an output_path string"""
+    output_path = re.sub(pattern=r"[^a-zA-Z0-9_/.]+", repl="_", string=output_path)
+    if "." in output_path:
+        output_path_parts = output_path.split(".")
+        output_path = "_".join(output_path_parts[:-1]) + "." + output_path_parts[-1]
+    output_path = re.sub(pattern=r"__+", repl="_", string=output_path)
+    return output_path[:-1] if output_path[-1] == "_" else output_path
 
 
 def translation_error_handler(
