@@ -13,6 +13,7 @@ from .snapshot import Snapshot
 from .styles import parse_style_file
 from .translation_base import (
     Translation,
+    TranslationStep,
 )
 from .translations.translation_loader import (
     default_translation_factory,
@@ -20,6 +21,8 @@ from .translations.translation_loader import (
 )
 
 LOGGER = logging.getLogger(LOGGER_NAME)
+
+_ALL_PARTICLE_GROUPS = "*"
 
 
 def parse_arguments(argv=None) -> argparse.Namespace:
@@ -129,11 +132,9 @@ def parse_arguments(argv=None) -> argparse.Namespace:
     parser_trans.add_argument(
         "-p",
         "--packing-cubes",
-        action="extend",
-        nargs="*",
+        action="store_true",
         help="""
-        Run packingcubes on the specified particle types.
-        If no particle types are specified, defaults to all.
+        Run packingcubes on all particle types.
         """,
         dest="packingcubes",
     )
@@ -162,7 +163,9 @@ def parse_arguments(argv=None) -> argparse.Namespace:
     return args
 
 
-def get_translation(translation_file: str | Path) -> Translation:
+def get_translation(
+    translation_file: str | Path, options: TranslationOptions | None
+) -> Translation:
     translation_file = Path(translation_file)
     yaml = pyyaml.YAML(typ="safe", pure=True)
     try:
@@ -173,6 +176,39 @@ def get_translation(translation_file: str | Path) -> Translation:
             "Using identity"
         )
         return Translation(default_factory=default_translation_factory())
+    if options and options.packingcubes:
+        # Add dataset sorting step to all particle datasets
+        pipeline_class_additions = cast(
+            dict[str, list[str]] | None, gusteau.get("pipeline_class_additions")
+        )
+        pipeline_class_additions = (
+            {} if pipeline_class_additions is None else pipeline_class_additions
+        )
+        pipeline_class_additions.setdefault("ParticleDatasetTranslation", []).append(
+            "SortDatasetStep"
+        )
+        gusteau["pipeline_class_additions"] = pipeline_class_additions
+
+        # Add dataset cubing step to all particle groups included
+        pipeline_path_additions = cast(
+            dict[str, list[str | TranslationStep]] | None,
+            gusteau.get("pipeline_path_additions"),
+        )
+        pipeline_path_additions = (
+            {} if pipeline_path_additions is None else pipeline_path_additions
+        )
+        for pg in options.packingcubes:
+            pipeline_path_additions.setdefault(f"/{pg}/Coordinates", []).append(
+                "PackCubesStep"
+            )
+
+        from .translations.attribute_translation import SaveQuantityStep
+
+        # Add saving the bounding box
+        pipeline_path_additions.setdefault("/Header.BoundingBox", []).append(
+            SaveQuantityStep(name="BoundingBox")
+        )
+        gusteau["pipeline_path_additions"] = pipeline_path_additions
     return from_dict(
         doc, default_factory=default_translation_factory(), gusteau=gusteau
     )
@@ -182,13 +218,13 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
     if not hasattr(args, "output"):
         sys.exit("the following arguments are required: output-snapshot")
     options = TranslationOptions(
-        packingcubes=cast(list[str], args.packingcubes),
+        packingcubes=[_ALL_PARTICLE_GROUPS] if args.packingcubes else [],
         force_overwrite=bool(args.force_overwrite),
         skip_data=bool(args.skip_data),
     )
     LOGGER.info(f"Loaded translation options: {options}")
 
-    translation = get_translation(args.translation)
+    translation = get_translation(args.translation, options)
 
     return snapshot.translate(
         translation,
