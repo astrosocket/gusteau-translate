@@ -257,6 +257,7 @@ class MakeParticleAttributesStep(LoadStep):
     """Load and apply cosmological and unit information"""
 
     priority: int = SaveStep.priority + 1
+    write_out: bool = False
     _: KW_ONLY
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
@@ -377,6 +378,8 @@ class MoveDatasetAttributesStep(TranslationStep):
     """
     Create translations to move all the dataset attributes
     """
+
+    write_out: bool = False
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
