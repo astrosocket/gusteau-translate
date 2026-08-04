@@ -301,6 +301,7 @@ class Translation:
     _SPEC: ClassVar[GUSTEAU] = GUSTEAU()
     _default_translation_factory: TranslationFactory
     _pipeline_additions: dict[str, list[TranslationStep]]
+    _priority_fields: list[FieldTranslation]
 
     def __init__(
         self,
@@ -311,6 +312,8 @@ class Translation:
         self.out2in: dict[str, FieldTranslation] = {}
         self.in2out: dict[str, list[FieldTranslation]] = {}
         self._default_translation_factory = default_factory
+
+        self._priority_fields: list[FieldTranslation] = []
 
         self._process_gusteau(gusteau)
 
@@ -365,6 +368,42 @@ class Translation:
         if field.input_path in self.in2out:
             self.in2out[field.input_path].remove(field)
         return self.out2in.pop(field.output_path, None)
+
+    def set_priority_fields(self, *field_list: str, **field_dict: str):
+        """
+        Set ordered list of translations to apply prior to explicit but post required
+
+        Parameters
+        ----------
+        *field_list: str, ...
+            List of output paths that need to be prioritized. Note that if the
+            translation does not exist, an error will be raised.
+
+        **field_dict: str->str, ...
+            Dict of output paths->field types that need to be prioritized. If
+            the translation does not exist, will use the
+            _default_translation factory to create a translation of type
+            field_type.
+            If finer-grained control on the constructor is required, use an
+            explicit translation.
+
+        Raises
+        ------
+        ValueError:
+            If an element of field list is not defined already
+
+        """
+
+        field_dict |= dict.fromkeys(field_list, "")
+        for field_name, obj in field_dict.items():
+            if field_name not in self.out2in:
+                if not obj:
+                    raise ValueError(f"Translation {field_name} is not defined!")
+                field = self._default_translation_factory(obj, field_name)
+                self.add_field(field)
+            else:
+                field = self.out2in[field_name]
+            self._priority_fields.append(field)
 
     def apply_translation(
         self,
@@ -423,26 +462,55 @@ class Translation:
         yield from self._iterate_fields_only(header, self.out2in, start_path="/Header")
 
     def get_required_translations(self) -> Iterator[FieldTranslation]:
+        """Get the required translations from the GUSTEAU spec
+
+        Note
+        ----
+        This is required to return the Header translations first
+
+        See Also
+        --------
+        get_header_translations, get_explicit_translations
+        """
         reqd = Translation._SPEC.required_tlgs.values()
         for group in reqd:
             yield from self._iterate_fields_only(
                 group, self.out2in, start_path="/" + group.name
             )
 
-    def get_explicit_translations(self) -> Iterable[FieldTranslation]:
-        in2out_lists = list(itertools.chain(*self.in2out.values()))
+    def get_explicit_translations(
+        self,
+        *,
+        skip_priority: bool = False,
+        skip_input: bool = False,
+        skip_output: bool = False,
+    ) -> Iterable[FieldTranslation]:
+        in2out_lists = (
+            [] if skip_input else list(itertools.chain(*self.in2out.values()))
+        )
         return itertools.chain(
-            self.get_header_translations(),
-            self.get_required_translations(),
-            list(self.out2in.values()),
+            [] if skip_priority else self._priority_fields,
+            [] if skip_output else list(self.out2in.values()),
             in2out_lists,
         )
 
     def apply_explicit_translations(
-        self, context: TranslationContext, error_handler: ErrorHandler
+        self,
+        context: TranslationContext,
+        error_handler: ErrorHandler,
+        *,
+        skip_priority: bool = False,
+        skip_input: bool = False,
+        skip_output: bool = False,
     ) -> list[str]:
         return self.apply_translation(
-            self.get_explicit_translations(), context, error_handler
+            self.get_explicit_translations(
+                skip_priority=skip_priority,
+                skip_output=skip_output,
+                skip_input=skip_input,
+            ),
+            context,
+            error_handler,
         )
 
     def apply_unused_translations(

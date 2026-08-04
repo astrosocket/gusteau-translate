@@ -138,15 +138,29 @@ class Snapshot:
             #  1. Explicit transformations
             #    a. Header
             #    b. Remaining required groups (Code, RunInfo, etc)
-            #    c. out2in
+            #    c. Remaining translations in style file
             #  2. Remaining fields in input file
             #  3. Any unused translations
 
             LOGGER.info(
                 "Translating header, required groups, and explicit translations"
             )
+
+            # Note that we **need** the header done first to be able to do any
+            # of the remaining steps, because it sets a number of quantities
+            # that other steps might need
+            # We also need the units step done so we can do any unit conversions
             self.directory.update(
-                translation.apply_explicit_translations(context, error_handler)
+                translation.apply_translation(
+                    translation.get_required_translations(), context, error_handler
+                )
+            )
+
+            self.directory.update(
+                translation.apply_explicit_translations(
+                    context,
+                    error_handler,
+                )
             )
 
             # do remainder of input fields
