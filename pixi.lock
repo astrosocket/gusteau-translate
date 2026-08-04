@@ -109,6 +109,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/yamllint-1.38.0-pyhcf101f3_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/zipp-4.1.0-pyhcf101f3_0.conda
       - pypi: ./
+      - pypi: https://files.pythonhosted.org/packages/00/ac/5e43e0b7fb91bf4c52d823bd138a123da10f13813fd31c537c980ad3e813/packingcubes-0.6.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/03/f0/6db07590ed7e0a77f186ef0bcea8d52553bf1ba57833e09467a2411f0f2d/xxhash-3.8.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0f/26/885774c006de6620ed3d10f45d8e20fe0b8e6aad6d573211a2cbc8b3e528/numba-0.66.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/8a/889bfb9c7fe296e8f6224498d173442250b3ee4706d04d286971a348e07c/unyt-3.1.0-py3-none-any.whl
@@ -148,7 +150,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_h366c992_103.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/watchdog-6.0.0-py314h9e666f3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-h280c20c_3.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.51-py310h1570de5_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.53-py310h1570de5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/ca-certificates-2026.6.17-hbd8a1cb_0.conda
@@ -261,6 +263,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wcwidth-0.8.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/yamllint-1.38.0-pyhcf101f3_1.conda
       - pypi: ./
+      - pypi: https://files.pythonhosted.org/packages/00/ac/5e43e0b7fb91bf4c52d823bd138a123da10f13813fd31c537c980ad3e813/packingcubes-0.6.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/03/f0/6db07590ed7e0a77f186ef0bcea8d52553bf1ba57833e09467a2411f0f2d/xxhash-3.8.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0f/26/885774c006de6620ed3d10f45d8e20fe0b8e6aad6d573211a2cbc8b3e528/numba-0.66.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/8a/889bfb9c7fe296e8f6224498d173442250b3ee4706d04d286971a348e07c/unyt-3.1.0-py3-none-any.whl
@@ -352,7 +356,9 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wcwidth-0.8.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/yamllint-1.38.0-pyhcf101f3_1.conda
       - pypi: ./
+      - pypi: https://files.pythonhosted.org/packages/00/ac/5e43e0b7fb91bf4c52d823bd138a123da10f13813fd31c537c980ad3e813/packingcubes-0.6.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/1b/4a/90715fa12006d681270b08d881195b6fab3ec39572e048764a1f7f59fed7/llvmlite-0.48.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/29/83/e361d3c1acd1b21e1d489616de6fa4aaf843365d8179f612e3743eac20a9/xxhash-3.8.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/44/b5/e930010965568fe7f2c6c962fd2849d458cb9f62c3ab7584af8a19a2b40a/numba-0.66.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/53/8a/889bfb9c7fe296e8f6224498d173442250b3ee4706d04d286971a348e07c/unyt-3.1.0-py3-none-any.whl
@@ -451,6 +457,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wcwidth-0.8.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/yamllint-1.38.0-pyhcf101f3_1.conda
       - pypi: ./
+      - pypi: https://files.pythonhosted.org/packages/00/ac/5e43e0b7fb91bf4c52d823bd138a123da10f13813fd31c537c980ad3e813/packingcubes-0.6.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/03/f0/6db07590ed7e0a77f186ef0bcea8d52553bf1ba57833e09467a2411f0f2d/xxhash-3.8.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0f/26/885774c006de6620ed3d10f45d8e20fe0b8e6aad6d573211a2cbc8b3e528/numba-0.66.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/8a/889bfb9c7fe296e8f6224498d173442250b3ee4706d04d286971a348e07c/unyt-3.1.0-py3-none-any.whl
@@ -550,6 +558,8 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/wcwidth-0.8.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/yamllint-1.38.0-pyhcf101f3_1.conda
       - pypi: ./
+      - pypi: https://files.pythonhosted.org/packages/00/ac/5e43e0b7fb91bf4c52d823bd138a123da10f13813fd31c537c980ad3e813/packingcubes-0.6.2-py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/03/f0/6db07590ed7e0a77f186ef0bcea8d52553bf1ba57833e09467a2411f0f2d/xxhash-3.8.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/0f/26/885774c006de6620ed3d10f45d8e20fe0b8e6aad6d573211a2cbc8b3e528/numba-0.66.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/53/8a/889bfb9c7fe296e8f6224498d173442250b3ee4706d04d286971a348e07c/unyt-3.1.0-py3-none-any.whl
@@ -1241,17 +1251,17 @@ packages:
     - yaml >=0.2.5,<0.3.0a0
   size: 85189
   timestamp: 1753484064210
-- conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.51-py310h1570de5_0.conda
+- conda: https://conda.anaconda.org/conda-forge/linux-64/zensical-0.0.53-py310h1570de5_0.conda
   noarch: python
-  sha256: e7294e8353d470bb3728ec7d3ffcff9552806d8668d2174315985c692942c16b
-  md5: f829af948bc8d508a4eb2a1405c786f0
+  sha256: fcb04d0e2cba944d990afa330fc75c00ac1d305345b15195997f9b0183b32f34
+  md5: 24cacbcae81ec2b4f1163d84f07478fc
   depends:
   - python
   - click >=8.1.8
   - deepmerge >=2.0
   - markdown >=3.7
   - pygments >=2.20
-  - pymdown-extensions >=10.21.3
+  - pymdown-extensions >=11.0
   - pyyaml >=6.0.2
   - tomli >=2.4.0
   - jinja2 >=3.1
@@ -1262,10 +1272,9 @@ packages:
   constrains:
   - __glibc >=2.17
   license: MIT
-  license_family: MIT
   run_exports: {}
-  size: 6905096
-  timestamp: 1784341093483
+  size: 6913918
+  timestamp: 1785872311975
 - conda: https://conda.anaconda.org/conda-forge/linux-64/zeromq-4.3.5-h09e67af_11.conda
   sha256: dc9f28dedcb5f35a127fad2d847674d2833369dd616d294e423b8997df31d8a8
   md5: 96b08867e21d4694fa5c2c226e6581b0
@@ -2330,11 +2339,34 @@ packages:
   requires_dist:
   - h5py
   - numpy>=2.4,<2.5
+  - packingcubes>=0.6.2,<0.7
   - ruamel-yaml>=0.19.1,<0.20
   - swiftsimio
   - sympy>=1.14.0,<2
   - tomlkit>=0.15.0,<0.16
+  requires_python: '>=3.13'
+- pypi: https://files.pythonhosted.org/packages/00/ac/5e43e0b7fb91bf4c52d823bd138a123da10f13813fd31c537c980ad3e813/packingcubes-0.6.2-py3-none-any.whl
+  name: packingcubes
+  version: 0.6.2
+  sha256: 024881c9080e7ac285d3b2094e822c532e6fc7af53960e4b8a7efcf3a4a2fd2c
+  requires_dist:
+  - numpy
+  - h5py
+  - numba
+  - xxhash>=3.6.0,<4
+  - matplotlib ; extra == 'viz'
+  - pygfx ; extra == 'viz'
+  - rendercanvas ; extra == 'viz'
+  - pyside6 ; extra == 'viz'
+  - jupyter-rfb ; extra == 'jupyter'
+  - packingcubes[viz] ; extra == 'all'
+  - packingcubes[jupyter] ; extra == 'all'
   requires_python: '>=3.12'
+- pypi: https://files.pythonhosted.org/packages/03/f0/6db07590ed7e0a77f186ef0bcea8d52553bf1ba57833e09467a2411f0f2d/xxhash-3.8.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+  name: xxhash
+  version: 3.8.1
+  sha256: c31a2649bcf1fe97cf11c79848d761df33ac46b3896942d31b640557b486ff6b
+  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/0f/26/885774c006de6620ed3d10f45d8e20fe0b8e6aad6d573211a2cbc8b3e528/numba-0.66.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
   name: numba
   version: 0.66.0
@@ -2348,6 +2380,11 @@ packages:
   version: 0.48.0
   sha256: 8761b9e522f55207e24424fcd98370289eec2710bf8e915c82d1053f642450dc
   requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/29/83/e361d3c1acd1b21e1d489616de6fa4aaf843365d8179f612e3743eac20a9/xxhash-3.8.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+  name: xxhash
+  version: 3.8.1
+  sha256: 98ee81b4b7f3023c9cb04a78cc67610baffcb5812d92f2096cb5a5efc6f19437
+  requires_python: '>=3.8'
 - pypi: https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
   name: mpmath
   version: 1.3.0
