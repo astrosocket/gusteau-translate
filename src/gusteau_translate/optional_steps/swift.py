@@ -59,11 +59,11 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
                 "Expression for physical CGS units",
                 "Expression_for_physical_CGS",
             ),
-            "u_I": ("U_I exponent", "U_I_exponent"),
-            "u_L": ("U_L exponent", "U_L_exponent"),
-            "u_M": ("U_M exponent", "U_M_exponent"),
-            "u_T": ("U_T exponent", "U_T_exponent"),
-            "u_t": ("U_t exponent", "U_t_exponent"),
+            "U_I": ("U_I exponent", "U_I_exponent"),
+            "U_L": ("U_L exponent", "U_L_exponent"),
+            "U_M": ("U_M exponent", "U_M_exponent"),
+            "U_T": ("U_T exponent", "U_T_exponent"),
+            "U_t": ("U_t exponent", "U_t_exponent"),
             "a_scale": ("a-scale exponent", "a_scale_exponent"),
             "h_scale": ("h-scale exponent", "h_scale_exponent"),
             "lossy_compression": ("Lossy compression filter", "LossyCompression"),
@@ -71,12 +71,22 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
 
         infile = context.infile
         attrs = infile[field.input_path].attrs
-        for param, (swift_attr_name, gus_attr_name) in attribute_mapping.items():
+        translation = context.translation
+        for param, (swift_attr_name, _) in attribute_mapping.items():
             field_value = getattr(field, param, None)
             attr = attrs.get(swift_attr_name)
             attr = attr if attr is None else process_attribute(attr, force_scalar=True)
             setattr(field, param, attr if field_value is None else field_value)
-            field.name_mapping[swift_attr_name] = gus_attr_name
+            field.name_mapping[swift_attr_name] = "[skip]"
+            fields = translation.get_fields_from_input(swift_attr_name)
+            for attr_field in fields:
+                if not attr_field._explicit:
+                    translation.remove_field(attr_field)
+                    LOGGER.debug(
+                        f"Removing dynamically generated field {attr_field.name}"
+                    )
+                else:
+                    LOGGER.debug(f"Explicit translation for {attr_field.name}")
 
         expression = (
             ""
