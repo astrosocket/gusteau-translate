@@ -38,15 +38,19 @@ class PackCubesStep(TranslationStep):
         dataset = packingcubes.InMemory(
             positions=field.value, bounding_box=bounding_box
         )
+
         cubes = packingcubes.Cubes(dataset)
+
         cubes.save(
             dataset=context.outfile, particle_type=particle_group, force_overwrite=True
         )
 
-        dataset.index.tofile(Path(context.tempdir) / f"{particle_group}.index")
+        index_file_name = Path(context.tempdir) / f"{particle_group}.index"
+        LOGGER.debug(f"Dumping index to {index_file_name}")
+        dataset.index.tofile(index_file_name)
 
         # remove the sort datastep since we've already sorted the Coordinates
-        field.pipeline.remove("SortDataStep")
+        field.pipeline.remove("SortDatasetStep")
 
         next_step(context)
 
@@ -65,7 +69,7 @@ class SortDatasetStep(TranslationStep):
             f" {particle_group}'s packingcubes indices"
         )
         index_file = Path(context.tempdir) / f"{particle_group}.index"
-        index = np.memmap(index_file)
+        index = np.memmap(index_file, dtype=np.int64)
 
         packingcubes.data_objects._sort_field_in_place(index, field.value)
 
