@@ -137,7 +137,6 @@ def initialize_gusteau_ds(
 def test_conversion(
     original_file: str | Path,
     gusteau_file: str | Path,
-    pg_mapping: dict[str, str],
     *,
     coords_field: str | None = None,  # noqa: PT028
     id_field: str | None = None,  # noqa: PT028
@@ -151,7 +150,7 @@ def test_conversion(
 
     rng = np.random.default_rng(0xBABBADE if random_seed is None else random_seed)
     num_slices = 10 if num_slices is None else num_slices
-    sample_percentage = 10 if sample_percentage is None else sample_percentage
+    sample_percentage = 1 if sample_percentage is None else sample_percentage
 
     gusteau_ds = None
 
@@ -197,7 +196,7 @@ def test_conversion(
             slice_starts = rng.choice(possible_starts, size=num_slices, replace=False)
             del possible_starts
 
-            opg = pg_mapping.get(pg, pg)
+            opg = gusteau[f"/{pg}"].attrs["Source_Description"]
 
             break_everything = False
 
@@ -248,10 +247,4 @@ if __name__ == "__main__":
     test_conversion(
         original_file,
         gusteau_file,
-        pg_mapping={
-            "Gas": "GasParticles",
-            "Stars": "StarParticles",
-            "ColdDarkMatter": "DMParticles",
-            "BlackHoles": "BHParticles",
-        },
     )
