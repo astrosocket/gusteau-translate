@@ -58,7 +58,7 @@ class TranslationContext:
 
 
 @dataclass
-class TranslationStep(PipelineStep):
+class TranslationStep[TranslationContext](PipelineStep):
     priority: int = 1
     write_out: bool = True
 
@@ -102,10 +102,14 @@ class TranslationPipeline[TranslationContext](Pipeline):
     def __init__(self, *steps: TranslationStep[TranslationContext]):
         super().__init__(*steps)
 
-    def append(self, step: TranslationStep[TranslationContext]):
+    def append(self, step: PipelineStep[TranslationContext]):
+        if not isinstance(step, TranslationStep):
+            raise ValueError("Only TranslationSteps are supported")
         super().append(step)
 
-    def extend(self, steps: Iterable[TranslationStep[TranslationContext]]):
+    def extend(self, steps: Iterable[PipelineStep[TranslationContext]]):
+        if not all(isinstance(step, TranslationStep) for step in steps):
+            raise ValueError("Only TranslationSteps are supported")
         super().extend(steps)
 
     def remove(self, step_name: str) -> TranslationStep[TranslationContext] | None:
@@ -221,7 +225,7 @@ def normalize_output_path(output_path: str) -> str:
 def translation_error_handler(
     ex: Exception,
     ctx: TranslationContext,
-    current_step: TranslationStep[TranslationContext],
+    current_step: PipelineStep[TranslationContext],
     next_step: NextStep,
 ):
     cause = ex.__cause__ if ex.__cause__ is not None else ex
