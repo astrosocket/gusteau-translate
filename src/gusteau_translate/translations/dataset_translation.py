@@ -302,7 +302,7 @@ class ConstantParticleDatasetTranslation(ParticleDatasetTranslation):
     like_dataset: InitVar[str | None] = None
     """Alias for input_path (overrides input path)"""
 
-    def __post_init__(self, like_dataset: str | None = None):
+    def __post_init__(self, like_dataset: str | None):
         super().__post_init__()
         old_input = self.input_path
         self.input_path = like_dataset if like_dataset else self.input_path
@@ -455,7 +455,7 @@ class MakeParticleAttributesStep(LoadStep):
         field.a_scale = 0 if field.a_scale is None else field.a_scale
         field.h_scale = 0 if field.h_scale is None else field.h_scale
 
-        terms = unames + ["a_scale", "h_scale"]
+        terms = [*unames, "a_scale", "h_scale"]
         a = float(context.quantities.get("a", 1))
         h = float(context.quantities.get("h", 1))
         exponents = {term: float(getattr(field, term)) for term in terms}

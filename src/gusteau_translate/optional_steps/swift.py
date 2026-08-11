@@ -50,8 +50,10 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
                 "ConversionFactorCGS",
             ),
             "conversion_factor_physcgs": (
-                "Conversion factor to physical CGS"
-                " (including cosmological corrections)",
+                (
+                    "Conversion factor to physical CGS"
+                    " (including cosmological corrections)"
+                ),
                 "ConversionFactor_PhysCGS",
             ),
             "description": ("Description", "Description"),

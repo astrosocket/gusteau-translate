@@ -59,7 +59,10 @@ select = [
     # flake8-simplify
     "SIM",
     # additional flake8
-    "FBT","C","A","FA","ICN","LOG","T","PT","Q","RET",
+    "FBT","C","A","FA","ICN","LOG","T","PT","Q","RET", "YTT", "S102", "S110", "S112",
+    "ASYNC", "DTZ", "T10", "ISC004", "LOG", "PIE", "FLY002", "PERF",
+    # Ruff only
+    "RUF",
     # isort
     "I",
     # McCabe Complexity
@@ -70,7 +73,7 @@ select = [
     # "D",
     # "DOC", # only available in ruff preview for now
 ]
-ignore = ["F841", "SIM300", "D400",]
+ignore = ["F841", "SIM300", "D400","PIE790"]
 unfixable = ["B"]
 
 
