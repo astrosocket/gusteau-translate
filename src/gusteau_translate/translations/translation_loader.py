@@ -105,7 +105,7 @@ def _clean_field_translation(
     )
 
     if "input_description" not in d:
-        d["input_description"] = d.get("input_description", f"From {in_name}")
+        d["input_description"] = d.get("input_description", f"{in_name}")
 
     d_pipeline = d.get("pipeline", {})
     if not isinstance(d_pipeline, dict):
