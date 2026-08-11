@@ -104,8 +104,8 @@ numpy = ">=2.4.6, <3"
 h5py = ">=3.16.0, <4"
 
 [tool.pixi.feature.style.dependencies]
-ruff = "*"
-ty = "*"
+ruff = ">=0.16.2,<0.17"
+ty = ">=0.0.70,<0.0.71"
 
 [tool.pixi.feature.style.tasks]
 format = "ruff format"
