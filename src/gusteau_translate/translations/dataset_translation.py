@@ -3,11 +3,14 @@ import numbers
 import typing
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from pathlib import Path
-from typing import Literal, cast
+from typing import Annotated, Literal, cast
 
 import h5py
+import h5py._hl.filters
 import numpy as np
+from annotated_types import MaxLen, MultipleOf
 from numpy.typing import ArrayLike, NDArray
+from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
@@ -34,6 +37,161 @@ def _validate_columns(columns: ArrayLike | None) -> int | NDArray[np.int_] | Non
     return int(columns) if not len(columns.shape) else columns
 
 
+class FilterInfo(BaseModel):
+    filter_code: int
+    flags: NonNegativeInt
+    aux: Annotated[tuple[NonNegativeInt, ...], MaxLen(256)]
+    name: Annotated[str, MaxLen(256)]
+
+
+type compression_type = (
+    Literal["gzip", "lzf", "szip"]
+    | str
+    | int
+    | tuple[int, ...]
+    | tuple[FilterInfo, ...]
+)
+
+
+def _add_options_to_proplist(  # noqa: C901
+    *,
+    plist: h5py.h5p.PropDCID | None = None,
+    shape,
+    dtype,
+    chunks,
+    maxshape,
+    external,
+    fill_time=None,
+    compression: compression_type | None = None,
+    compression_opts: NonNegativeInt
+    | tuple[
+        Literal["ec", "nn"],
+        Annotated[PositiveInt, MultipleOf(2)],
+    ]
+    | None = None,
+    scaleoffset: NonNegativeInt | bool | None = None,
+    shuffle: bool | None = None,
+    fletcher32: bool | None = None,
+) -> h5py.h5p.PropDCID:
+    """Add options to property list
+
+    Custom implementation of fill_dcpl to fill the filter pipeline of a proplist.
+    Necessary due to h5py's inability to use both fletcher32 and scale_offset
+    filters in the high-level API
+
+    Undocumented and subject to change without warning
+    """
+    plist = h5py._hl.filters.fill_dcpl(
+        # arguments we will pass to the original
+        plist=plist or h5py.h5p.create(h5py.h5p.DATASET_CREATE),
+        shape=shape,
+        dtype=dtype,
+        chunks=chunks,
+        maxshape=maxshape,
+        external=external,
+        fill_time=fill_time,
+        # arguments we'll override manually
+        compression=None,
+        compression_opts=None,
+        shuffle=None,
+        fletcher32=None,
+        scaleoffset=None,
+    )
+
+    if scaleoffset:
+        if dtype.kind == "f":
+            if scaleoffset is True:
+                raise ValueError(
+                    "Integer scale_offset_filter must be provided"
+                    " for floating point types"
+                )
+            plist.set_scaleoffset(h5py.h5z.SO_FLOAT_DSCALE, scaleoffset)
+        elif dtype.kind in ("u", "i"):
+            scaleoffset = (
+                h5py.h5z.SO_INT_MINBITS_DEFAULT if scaleoffset is True else scaleoffset
+            )
+            plist.set_scaleoffset(h5py.h5z.SO_INT, scaleoffset)
+        else:
+            raise TypeError(
+                "Scale offset filter is only supported for integer/floating point types"
+            )
+
+    if shuffle:
+        plist.set_shuffle()
+
+    match compression:
+        case "gzip":
+            if isinstance(compression_opts, tuple):
+                raise ValueError(
+                    "Only integer compression options or None are supported for gzip"
+                )
+            gzip_level = (
+                h5py._hl.filters.DEFAULT_GZIP
+                if compression_opts is None
+                else (compression_opts if compression_opts in range(10) else -1)
+            )
+            if gzip_level < 0:
+                raise ValueError(
+                    "Only integers within 0-9 are allowed"
+                    f" (provided {compression_opts})"
+                )
+            plist.set_deflate(gzip_level)
+        case "lzf":
+            if compression_opts is not None:
+                raise ValueError("LZF accepts no compression options")
+            plist.set_filter(h5py.h5z.FILTER_LZF, h5py.h5z.FLAG_OPTIONAL)
+        case "szip":
+            compression_opts = (
+                h5py._hl.filters.DEFAULT_SZIP
+                if compression_opts is None
+                else compression_opts
+            )
+            err_msg = (
+                "SZIP options must be a 2-tuple ('ec'|'nn', even integer in (0, 32])"
+            )
+            if not isinstance(compression_opts, tuple):
+                raise TypeError(err_msg)
+            szmethod, szpix = compression_opts
+            if szmethod not in ("ec", "nn") or not (0 < szpix <= 32 and szpix % 2 == 0):
+                raise ValueError(err_msg)
+            szmethod = (
+                h5py.h5z.SZIP_EC_OPTION_MASK
+                if szmethod == "ec"
+                else h5py.h5z.SZIP_NN_OPTION_MASK
+            )
+            plist.set_filter(szmethod, szpix)
+        case None:
+            pass
+        case _:
+            # strictly disallow unknown filters
+            if isinstance(compression, str):
+                raise ValueError(f"Unknown compression filter: {compression}")
+            compression = (
+                (compression,) if not isinstance(compression, tuple) else compression
+            )
+            for comp in compression:
+                if isinstance(comp, int):
+                    if not h5py.h5z.filter_avail(comp):
+                        raise ValueError(f"Unknown compression filter: {comp}")
+                    if not isinstance(compression_opts, tuple):
+                        raise ValueError(
+                            f"compression_opts for unknown filter {comp}"
+                            " must be a tuple of UINTs"
+                        )
+                    comp = FilterInfo(
+                        filter_code=comp,
+                        flags=h5py.h5z.FLAG_OPTIONAL,
+                        aux=compression_opts,
+                        name="unknown",
+                    )
+                plist.set_filter(comp.filter_code, comp.flags, comp.aux)
+
+    if fletcher32:
+        plist.set_fletcher32()
+
+    return plist
+
+
 @dataclass
 class DatasetTranslation(FieldTranslation):
     _: KW_ONLY
@@ -42,13 +200,18 @@ class DatasetTranslation(FieldTranslation):
     Index or list of indices representing the column in the 2D dataset to load
     1D datasets or datasets that use all the columns should specify None
     """
-    compression: str | Literal["gzip", "lzf", "szip"] | int | tuple[int, ...] | None = (
-        None
-    )
+    compression: compression_type | None = None
     """Compression used by this dataset"""
-    compression_opts: int | dict[str, str | int | float] | None = None
+    compression_opts: (
+        NonNegativeInt
+        | tuple[
+            Literal["ec", "nn"],
+            Annotated[NonNegativeInt, MultipleOf(2)],
+        ]
+        | None
+    ) = None
     """Compression options used by this dataset"""
-    scale_offset_filter: int | None = None
+    scale_offset_filter: NonNegativeInt | bool | None = None
     """Whether to apply the scale offset filter to this dataset
     Default is to use the source dataset's scale_offset value
     """
@@ -63,7 +226,13 @@ class DatasetTranslation(FieldTranslation):
     chunks: tuple[int, ...] | bool | None = None
     """
     Chunk division used by dataset. 
+    Default is to use the source dataset's chunks, accounting for self.columns.
     Set to `True` to have h5py compute them automatically
+    """
+    maxshape: tuple[PositiveInt, ...] | None = None
+    """
+    maxshape used by dataset.
+    Default is to use the source dataset's maxshape
     """
 
     name_mapping: dict[str, str | Literal["[skip]"] | Literal["[ignore]"]] = field(
@@ -214,6 +383,15 @@ class DatasetLoadStep(LoadStep):
                 )
             else:
                 field.chunks = (chunk_height, *field.chunks[1:])
+
+        # Special case: the maxshape property always exists, but if we pass it
+        # to create_dataset, the new dataset will automatically get chunked
+        # layout. So we copy it only if it is different from shape.
+        field.maxshape = (
+            indata.maxshape
+            if field.maxshape is None and indata.maxshape != indata.shape
+            else field.maxshape
+        )
         next_step(context)
 
 
@@ -224,25 +402,21 @@ class DatasetSaveStep(SaveStep):
         if not isinstance(field, DatasetTranslation):
             raise TranslationClassError(step=self, field=field)
         LOGGER.debug(f"Saving dataset {field.output_path}")
-        kwds = {}
-        possible_kwds = {
-            "compression": field.compression,
-            "compression_opts": field.compression_opts,
-            "scaleoffset": field.scale_offset_filter,
-            "shuffle": field.shuffle_filter,
-            # "fletcher32": field.fletcher32_filter,
-            # We're currently ignoring the fletcher32 filter because h5py
-            # doesn't allow fletcher32+scale_offset at the same time, even
-            # though it should be valid for most compression options, in the
-            # high-level API (see h5py issue #953 and
-            # [comment](https://github.com/h5py/h5py/blob/6bce6d4e74b6c49fbb5614b1fdd0a5c27ad21904/h5py/_hl/filters.py#L241-L247))
-            # Since we're dealing with very large datasets and not yet in
-            # production, fletcher32 is the more convenient option to drop
-        }
-        for kwd, attr in possible_kwds.items():
-            if attr is not None:
-                kwds[kwd] = attr
-        context.outfile.create_dataset(name=field.output_path, data=field.value, **kwds)
+        dcpl = _add_options_to_proplist(
+            shape=field.value.shape,
+            dtype=field.value.dtype,
+            chunks=field.chunks,
+            maxshape=field.maxshape,
+            external=None,
+            compression=field.compression,
+            compression_opts=field.compression_opts,
+            scaleoffset=field.scale_offset_filter,
+            shuffle=field.shuffle_filter,
+            fletcher32=field.fletcher32_filter,
+        )
+        context.outfile.create_dataset(
+            name=field.output_path, data=field.value, dcpl=dcpl
+        )
 
         # add source description attribute
         context.outfile[field.output_path].attrs["Source_Description"] = (

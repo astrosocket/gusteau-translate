@@ -16,6 +16,7 @@ dependencies = [
     "ruamel-yaml>=0.19.1,<0.20",
     "sympy>=1.14.0,<2",
     "packingcubes>=0.6.5,<0.7",
+    "pydantic>=2.13.4,<3",
 ]
 name = "gusteau-translate"
 requires-python = ">= 3.13"
@@ -92,7 +93,6 @@ preview = ["pixi-build"]
 
 
 [tool.pixi.dependencies]
-pydantic = ">=2.13.4,<3"
 ipykernel = ">=7.3.0,<8"
 pip = ">=26.1.2,<27"
 yamllint = ">=1.38.0,<2"
