@@ -250,6 +250,8 @@ class DatasetTranslation(FieldTranslation):
         self,
     ):
         self.columns = _validate_columns(self.columns)
+        if self.columns is not None and "[" not in self.input_description:
+            self.input_description += f"[:, {self.columns}]"
         self.pipeline.append(DatasetLoadStep())
         self.pipeline.append(DatasetSaveStep())
         if self.input_path != self.output_path or self.name_mapping:
