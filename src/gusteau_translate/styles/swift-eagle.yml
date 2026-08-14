@@ -176,7 +176,9 @@ Header:
   PartType_Mapping:
     constant: [0, 1, -1, -1, 1, 2]
     type: ConstantAttributeTranslation
-  SnapshotDate: {type: AttributeTranslation}
+  SnapshotDate:
+    type: AttributeTranslation
+    pipeline: {ConvertDateStep: {format: "%H:%M:%S %Y-%m-%d %Z"}}
   Redshift:
     force_scalar: true
     type: AttributeTranslation
@@ -255,8 +257,9 @@ RunInfo:
     ParameterFilePath: {constant: "", type: ConstantAttributeTranslation}
   SessionRuntime: {constant: -1, type: ConstantAttributeTranslation}
   SnapshotDate:
-    constant: "2026-07-14T23:00:32.823890+00:00"
-    type: ConstantAttributeTranslation
+    input_path: /Header.SnapshotDate
+    type: AttributeTranslation
+    pipeline: {ConvertDateStep: {format: "%H:%M:%S %Y-%m-%d %Z"}}
   System:
     input_path: /Header.System
     type: AttributeTranslation
