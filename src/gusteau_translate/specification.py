@@ -25,6 +25,18 @@ type num_str_type = str | integer
 num_str_array = (np.ndarray, num_str_type.__value__)
 
 
+class RegexName(str):
+    """Name that is vaguely regex-like"""
+
+    def found_in(self, parent, validation_info):
+        if "{pg}" in self:
+            particle_names = validation_info.get("Particle_names", [])
+            for pg in particle_names:
+                if self.replace("{pg}", pg):
+                    return parent.get(self.replace("{pg}", pg))
+        return parent.get(self)
+
+
 class ValidationError(Exception): ...
 
 
@@ -191,7 +203,11 @@ class DatasetSpec(ValidatedSpec):
             raise ValidationError(
                 f"Attempting to check for {self.name} dataset under {type(parent)}"
             )
-        dobj = parent.get(self.name)
+        dobj = (
+            self.name.found_in(parent, validation_info)
+            if isinstance(self.name, RegexName)
+            else parent.get(self.name)
+        )
         if dobj is None:
             if not self.optional:
                 raise DataGroupMissing(
@@ -313,7 +329,11 @@ class OptionalValidationGroup(ValidatedSpec):
             )
         num_found = 0
         for option in self.options:
-            num_found += option.name in parent
+            num_found += (
+                option.name.found_in(parent, validation_info)
+                if isinstance(option.name, RegexName)
+                else option.name in parent
+            )
         if num_found < self.num_required:
             raise DataGroupMissing(
                 f"Missing more than {self.num_required} (minimum) in {self.name}"
@@ -361,7 +381,11 @@ class GroupSpec(ValidatedSpec):
             raise ValidationError(
                 f"Attempting to check for {self.name} dataset under {type(parent)}"
             )
-        dobj = parent.get(self.name)
+        dobj = (
+            self.name.found_in(parent, validation_info)
+            if isinstance(self.name, RegexName)
+            else parent.get(self.name)
+        )
         if dobj is None:
             if not self.optional:
                 raise DataGroupMissing(
@@ -1260,8 +1284,8 @@ class GUSTEAU:
         # Create the particle name and number mapping. Note that these fields are
         # set by the header, so if the header was validated correctly they must
         # exist
-        particle_names = cast(list[str], validation_info.get("ParticleNames"))
-        particle_numbers = cast(list[int], validation_info.get("ParticleNumbers"))
+        particle_names = cast(list[str], validation_info.get("Particle_names"))
+        particle_numbers = cast(list[int], validation_info.get("Particle_numbers"))
         particle_numbers = (
             [1 for _ in particle_numbers] if options.skip_data else particle_numbers
         )
