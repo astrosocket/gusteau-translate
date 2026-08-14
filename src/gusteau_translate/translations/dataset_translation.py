@@ -270,7 +270,7 @@ class ParticleDatasetTranslation(DatasetTranslation):
     is_comoving: bool | None = None
     conversion_factor_cgs: typing.SupportsFloat | None = None
     conversion_factor_physcgs: typing.SupportsFloat | None = None
-    expression_for_physical_CGS: str | None = None
+    phys_CGS_expression: str | None = None
     lossy_compression: str | None = None
     U_I: typing.SupportsFloat | None = None
     U_L: typing.SupportsFloat | None = None
@@ -497,12 +497,12 @@ class MakeParticleAttributesStep(LoadStep):
 
         unit_str = str(conversion_factor_physcgs.units.get_cgs_equivalent())
 
-        if field.expression_for_physical_CGS is None:
-            field.expression_for_physical_CGS = " ".join(
+        if field.phys_CGS_expression is None:
+            field.phys_CGS_expression = " ".join(
                 f"{names[term]}^{exponents[term]}" for term in terms
             )
 
-            field.expression_for_physical_CGS += f" [{unit_str}]"
+            field.phys_CGS_expression += f" [{unit_str}]"
 
         field.units = unit_str if field.units is None else field.units
         field.units = "" if field.units == "-" else field.units
@@ -513,11 +513,11 @@ class MakeParticleAttributesStep(LoadStep):
 
         attributes = {
             "Units": field.units,
-            "ConversionFactorCGS": field.conversion_factor_cgs,
-            "ConversionFactor_PhysCGS": field.conversion_factor_physcgs,
+            "Conversion_factor_CGS": field.conversion_factor_cgs,
+            "Conversion_factor_PhysCGS": field.conversion_factor_physcgs,
             "Description": field.description,
-            "Expression_for_physical_CGS": field.expression_for_physical_CGS,
-            "LossyCompression": field.lossy_compression,
+            "Phys_CGS_expression": field.phys_CGS_expression,
+            "Lossy_compression": field.lossy_compression,
             "U_I_exponent": field.U_I,
             "U_L_exponent": field.U_L,
             "U_M_exponent": field.U_M,

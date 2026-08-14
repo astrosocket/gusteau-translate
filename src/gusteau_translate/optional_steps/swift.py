@@ -46,35 +46,27 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
 
         attribute_mapping = {
             "conversion_factor_cgs": (
-                "Conversion factor to CGS (not including cosmological corrections)",
-                "ConversionFactorCGS",
+                "Conversion factor to CGS (not including cosmological corrections)"
             ),
             "conversion_factor_physcgs": (
-                (
-                    "Conversion factor to physical CGS"
-                    " (including cosmological corrections)"
-                ),
-                "ConversionFactor_PhysCGS",
+                "Conversion factor to physical CGS (including cosmological corrections)"
             ),
-            "description": ("Description", "Description"),
-            "expression_for_physical_CGS": (
-                "Expression for physical CGS units",
-                "Expression_for_physical_CGS",
-            ),
-            "U_I": ("U_I exponent", "U_I_exponent"),
-            "U_L": ("U_L exponent", "U_L_exponent"),
-            "U_M": ("U_M exponent", "U_M_exponent"),
-            "U_T": ("U_T exponent", "U_T_exponent"),
-            "U_t": ("U_t exponent", "U_t_exponent"),
-            "a_scale": ("a-scale exponent", "a_scale_exponent"),
-            "h_scale": ("h-scale exponent", "h_scale_exponent"),
-            "lossy_compression": ("Lossy compression filter", "LossyCompression"),
+            "description": ("Description"),
+            "phys_CGS_expression": ("Expression for physical CGS units"),
+            "U_I": ("U_I exponent"),
+            "U_L": ("U_L exponent"),
+            "U_M": ("U_M exponent"),
+            "U_T": ("U_T exponent"),
+            "U_t": ("U_t exponent"),
+            "a_scale": ("a-scale exponent"),
+            "h_scale": ("h-scale exponent"),
+            "lossy_compression": ("Lossy compression filter"),
         }
 
         infile = context.infile
         attrs = infile[field.input_path].attrs
         translation = context.translation
-        for param, (swift_attr_name, _) in attribute_mapping.items():
+        for param, swift_attr_name in attribute_mapping.items():
             field_value = getattr(field, param, None)
             attr = attrs.get(swift_attr_name)
             attr = attr if attr is None else process_attribute(attr, force_scalar=True)
@@ -91,9 +83,7 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
                     LOGGER.debug(f"Explicit translation for {attr_field.name}")
 
         expression = (
-            ""
-            if field.expression_for_physical_CGS is None
-            else field.expression_for_physical_CGS
+            "" if field.phys_CGS_expression is None else field.phys_CGS_expression
         )
         expression = re.search(r"\[(.+)\]", expression)
         field.units = expression.group(1) if expression else ""
