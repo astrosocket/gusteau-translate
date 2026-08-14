@@ -88,6 +88,8 @@ exclude_also = [
     "raise NotImplementedError",
     '@(abc\.)?abstractmethod',
 ]
+[tool.tombi]
+toml-version = "v1.1.0"
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
@@ -139,6 +141,10 @@ griffe-pydantic = "*"
 zensical = ">=0.0.53,<0.0.54"
 mkdocstrings-python = "*"
 mkdocstrings = "*"
+
+[tool.pixi.feature.docs.tasks]
+zserve = "zensical serve"
+zbuild = "zensical build"
 
 [tool.pixi.feature.py313.dependencies]
 python = "3.13.*"
