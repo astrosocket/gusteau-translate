@@ -287,7 +287,7 @@ class OptionalValidationGroup(ValidatedSpec):
 
     _TYPE: ClassVar[str] = "OptionSet"
 
-    def __post_init__(self, num_maximum: int | None = None):
+    def __post_init__(self, num_maximum: int | None):
         if self.num_required < 1:
             raise ValueError(
                 "Need at least one required Dataset."
@@ -1207,8 +1207,14 @@ class ParticleGroupSpec(TaggedGroupSpec):
 
 
 class GUSTEAU:
-    required_tlgs = {tlg.name: tlg for tlg in [header, code, cosmo, runinfo, units]}
-    optional_tlgs = {tlg.name: tlg for tlg in [cubes]}
+    required_tlgs: dict[str, GroupSpec]
+    optional_tlgs: dict[str, GroupSpec]
+
+    def __init__(self):
+        self.required_tlgs = {
+            tlg.name: tlg for tlg in [header, code, cosmo, runinfo, units]
+        }
+        self.optional_tlgs = {tlg.name: tlg for tlg in [cubes]}
 
     def _validate_metadata_attribute(
         self, h5_file: h5py.File, *args, validation_info: dict[str, Any], **kwargs

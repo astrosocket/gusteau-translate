@@ -14,6 +14,5 @@ __all__ = [
     "AttributeTranslation",
     "ConstantAttributeTranslation",
     "FileContentsTranslation",
-    "DatasetTranslation",
     "GroupTranslation",
 ]

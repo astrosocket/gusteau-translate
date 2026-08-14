@@ -135,7 +135,7 @@ class Pipeline[Context]:
         r = f"{self.__class__.__name__}=["
         if self.queue:
             for step in self.queue[:-1]:
-                r += f"{repr(step)}, "
-            r += f"{repr(self.queue[-1])}"
+                r += f"{step!r}, "
+            r += f"{self.queue[-1]!r}"
         r += "]"
         return r
