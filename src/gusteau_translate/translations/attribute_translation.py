@@ -147,7 +147,7 @@ def process_attribute(
         # check if using an old-style fixed-length string and convert
         # attr = str(attr) if isinstance(attr, np.bytes_) else attr
         if isinstance(attr, np.bytes_):
-            return str(attr)
+            return attr.decode("utf8")
 
         if force_scalar:
             if len(np.array(attr)) == 1:
