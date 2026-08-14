@@ -251,11 +251,11 @@ class DatasetSpec(ValidatedSpec):
 def required_particle_dataset_attributes() -> list[AttributeSpec]:
     return [
         AttributeSpec("Units", str),
-        AttributeSpec("ConversionFactorCGS", number),
-        AttributeSpec("ConversionFactor_PhysCGS", number),
+        AttributeSpec("Conversion_factor_CGS", number),
+        AttributeSpec("Conversion_factor_PhysCGS", number),
         AttributeSpec("Description", str),
-        AttributeSpec("Expression_for_physical_CGS", str),
-        AttributeSpec("LossyCompression", str),
+        AttributeSpec("Phys_CGS_expression", str),
+        AttributeSpec("Lossy_compression", str),
         AttributeSpec("U_I_exponent", number),
         AttributeSpec("U_L_exponent", number),
         AttributeSpec("U_M_exponent", number),
@@ -790,18 +790,18 @@ header = GroupSpec(
         AttributeSpec("Code", str),
         AttributeSpec("Source", str),
         AttributeSpec("Source_file", str),
-        AttributeSpec("ParticleNames", (np.ndarray, str), sets_info="ParticleNames"),
+        AttributeSpec("Particle_names", (np.ndarray, str), sets_info="Particle_names"),
         AttributeSpec(
-            "ParticleNumbers", (np.ndarray, np.uint64), sets_info="ParticleNumbers"
+            "Particle_numbers", (np.ndarray, np.uint64), sets_info="Particle_numbers"
         ),
-        AttributeSpec("InitialMassTable", (np.ndarray, number)),
-        AttributeSpec("BoundingBox", np.ndarray, 6),
+        AttributeSpec("Initial_mass_table", (np.ndarray, number)),
+        AttributeSpec("Bounding_box", np.ndarray, 6),
         AttributeSpec("Time", number),
-        AttributeSpec("RunName", str),
-        AttributeSpec("NumFilesPerSnapshot", np.int32),
+        AttributeSpec("Run_name", str),
+        AttributeSpec("Num_files_per_snapshot", np.int32),
         AttributeSpec("Dimension", integer, sets_info="D"),
-        AttributeSpec("PartType_Mapping", num_str_array, 6),
-        AttributeSpec("SnapshotDate", str),
+        AttributeSpec("Part_type_mapping", num_str_array, 6),
+        AttributeSpec("Snapshot_date", str),
         AttributeSpec("Redshift", number),
         # Gadget-2 header fields not already included
         AttributeSpec("NumPart_ThisFile", (np.ndarray, np.uint32), 6),
@@ -866,8 +866,8 @@ cosmo = GroupSpec(
         OptionalAttributeSpec("Universe_age", number),
         OptionalAttributeSpec("a_begin", number),
         OptionalAttributeSpec("a_end", number),
-        OptionalAttributeSpec("time_begin", number),
-        OptionalAttributeSpec("time_end", number),
+        OptionalAttributeSpec("Time_begin", number),
+        OptionalAttributeSpec("Time_end", number),
         OptionalAttributeSpec("w", number),
         OptionalAttributeSpec("w_0", number),
         OptionalAttributeSpec("w_a", number),
@@ -878,17 +878,17 @@ runinfo = GroupSpec(
     name="RunInfo",
     attrs=[
         AttributeSpec("System", str),
-        AttributeSpec("SnapshotDate", str),
-        AttributeSpec("TotalRuntime", number),
-        AttributeSpec("SessionRuntime", number),
+        AttributeSpec("Snapshot_date", str),
+        AttributeSpec("Total_runtime", number),
+        AttributeSpec("Session_runtime", number),
     ],
     datagroups=[
         GroupSpec(name="Parameters"),
         GroupSpec(
             name="ParameterFiles",
             attrs=[
-                AttributeSpec("ParameterFile", str),
-                AttributeSpec("ParameterFilePath", str),
+                AttributeSpec("Parameter_file", str),
+                AttributeSpec("Parameter_file_path", str),
             ],
         ),
     ],
@@ -897,11 +897,11 @@ runinfo = GroupSpec(
 units = GroupSpec(
     name="Units",
     attrs=[
-        AttributeSpec("UnitLength_CGS", number),
-        AttributeSpec("UnitMass_CGS", number),
-        AttributeSpec("UnitTime_CGS", number),
-        AttributeSpec("UnitTemperature_CGS", number),
-        AttributeSpec("UnitCurrent_CGS", number),
+        AttributeSpec("Unit_length_CGS", number),
+        AttributeSpec("Unit_mass_CGS", number),
+        AttributeSpec("Unit_time_CGS", number),
+        AttributeSpec("Unit_temperature_CGS", number),
+        AttributeSpec("Unit_current_CGS", number),
     ],
 )
 
@@ -1011,11 +1011,11 @@ subfind = TagSpec(
     name="Subfind",
     includes={"Massive": ABOVE},
     attrs=[
-        AttributeSpec(name="NumNearest", attr_type=number, sets_info="NumNearest"),
+        AttributeSpec(name="Num_nearest", attr_type=number, sets_info="NumNearest"),
         AttributeSpec(
-            name="DarkMatterSpecies",
+            name="Dark_matter_species",
             attr_type=num_str_array,
-            sets_info="Subfind_DarkMatterSpecies",
+            sets_info="Subfind_dark_matter_species",
         ),
     ],
     datagroups=[
@@ -1045,7 +1045,7 @@ thermal = TagSpec(
 transform = TagSpec(
     name="Transform",
     datagroups=[
-        TaggedGroupSpec(name="FromParent"),
+        TaggedGroupSpec(name=RegexName("FromParent_{pg}")),
         OptionalValidationGroup(
             name="TransformTimeGroup",
             num_required=1,
@@ -1122,7 +1122,7 @@ hydrogen_extended = ChemicalTagSpec(
 )
 
 metal_only_denom = AttributeSpec(
-    name="MetalOnlyDenominator",
+    name="Metal_only_denominator",
     attr_type=number,
 )
 
@@ -1192,7 +1192,8 @@ def required_particle_group_attributes() -> list[AttributeSpec]:
     """Return the list of required attributes for particle groups"""
     return [
         AttributeSpec("Aliases", (np.ndarray, str)),
-        AttributeSpec("NumberOfFields", integer),
+        AttributeSpec("Number_of_fields", integer),
+        OptionalAttributeSpec("Number_of_particles", integer),
         # Already included by subclassing TaggedGroup
         # AttributeSpec("Tags", (np.ndarray, str)),
         # AttributeSpec("Description", str),
