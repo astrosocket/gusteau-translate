@@ -42,6 +42,8 @@ issues = "https://github.com/astrosocket/gusteau_translate/issues/new"
 
 [project.scripts]
 alchemize = "gusteau_translate.main:cli"
+gusteau-alchemize = "gusteau_translate.main:cli"
+gusteau-translate = "gusteau_translate.main:cli"
 
 [tool.hatch.version]
 source = "vcs"
