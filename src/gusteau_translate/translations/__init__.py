@@ -13,6 +13,7 @@ from .group_translation import GroupTranslation as GroupTranslation
 __all__ = [
     "AttributeTranslation",
     "ConstantAttributeTranslation",
+    "DatasetTranslation",
     "FileContentsTranslation",
     "GroupTranslation",
 ]
