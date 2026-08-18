@@ -7,7 +7,7 @@ cli(
         "-t",
         "swift-eagle",
         "--packing-cubes",
-        "tests/snapshot_090.hdf5",
+        "tests/swift-eagle.hdf5",
         "tests/gusteau.hdf5",
     ]
 )
