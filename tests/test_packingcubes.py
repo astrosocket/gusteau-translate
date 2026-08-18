@@ -28,7 +28,6 @@ class GUSTEAUDataset(packingcubes.data_objects.HDF5Dataset):
         *,
         name: str | None = None,
         filepath: str | Path,
-        sorted_filepath: str | Path | None = None,
         particle_type: str | None = None,
         data_slices=None,
         **kwargs,
@@ -43,14 +42,9 @@ class GUSTEAUDataset(packingcubes.data_objects.HDF5Dataset):
         name: str, optional
             A name for this dataset. Defaults to filepath
 
-        sorted_filepath: str | Path, optional
-            Optional file to store sorted position and shuffle-list data.
-            Will also search for positions data from this file before
-            searching filepath. Defaults to filepath
-
         particle_type: str, optional
-            Initial particle type to (eagerly) load. Defaults to the first HDF5
-            group that starts with "Part".
+            Initial particle type to (eagerly) load. Defaults to the first
+            particle type listed in /Header.Particle_names
 
         data_slices: np.s_ | dict[str, np.s_], optional
             A numpy slice object or dictionary of slice objects per particle
@@ -64,7 +58,6 @@ class GUSTEAUDataset(packingcubes.data_objects.HDF5Dataset):
         super().__init__(
             name=name,
             filepath=filepath,
-            sorted_filepath=sorted_filepath,
             particle_type=particle_type,
             data_slices=data_slices,
         )
@@ -80,11 +73,10 @@ class GUSTEAUDataset(packingcubes.data_objects.HDF5Dataset):
             self._header = dict(file["Header"].attrs)
             self._top_level_groups = [g.lower() for g in file]
 
-        self._particle_types = self._header["ParticleNames"]
+        self._particle_types = self._header["Particle_names"]
 
-        self._sorted_file_name = Path(
-            self.filepath if sorted_filepath is None else sorted_filepath
-        )
+        self._sorted_file_name = self.filepath
+
         if self._sorted_file_name.exists() and not h5py.is_hdf5(self._sorted_file_name):
             raise packingcubes.data_objects.DatasetError(
                 f"{self._sorted_file_name} already exists but is not an hdf5 file!",
@@ -94,13 +86,13 @@ class GUSTEAUDataset(packingcubes.data_objects.HDF5Dataset):
         self._particle_type = (
             self._particle_types[0] if particle_type is None else particle_type
         )
-        _particle_numbers = self._header["ParticleNumbers"]
+        _particle_numbers = self._header["Particle_numbers"]
         self._particle_numbers = dict(
             zip(self._particle_types, _particle_numbers, strict=True)
         )
 
     def _set_bounding_box(self):
-        boundingbox = np.atleast_1d(self._header["BoundingBox"])
+        boundingbox = np.atleast_1d(self._header["Bounding_box"])
         match len(boundingbox):
             case 2:
                 boxSize = boundingbox[1]
@@ -127,7 +119,7 @@ class GUSTEAUDataset(packingcubes.data_objects.HDF5Dataset):
 def initialize_gusteau_ds(
     gusteau_file: str | Path, particle_type: str
 ) -> GUSTEAUDataset:
-    LOGGER.debug("Initializing GadgetishHDF5Dataset")
+    LOGGER.debug("Initializing GUSTEAUDataset")
     ds = GUSTEAUDataset(filepath=gusteau_file, particle_type=particle_type)
     LOGGER.debug("Processing extra fields")
     ds.process_extra_fields(pids="ParticleIDs")
