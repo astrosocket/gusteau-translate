@@ -109,6 +109,18 @@ def create_unit_registry(context: TranslationContext):
     context.quantities["registry"] = registry
 
 
+def set_cosmo_quantities(context: TranslationContext):
+    """Set scale-factor and little h if not already present"""
+    quantities = context.quantities
+    if "a" not in quantities:
+        # z is a required header variable (as redshift) so it should exist
+        # but if it doesn't simply assume z=now
+        redshift = quantities.get("z", 0)
+        quantities["a"] = 1 / (1 + redshift)
+    if "h" not in quantities:
+        quantities["h"] = 1
+
+
 def initialize_particle_groups(
     particle_groups: list[str], context: TranslationContext, error_handler: ErrorHandler
 ):
@@ -242,6 +254,7 @@ class Snapshot:
 
             # Now that we have the required group Units, we can make the registry
             create_unit_registry(context)
+            set_cosmo_quantities(context)
 
             if options.packingcubes:
                 _process_packingcubes(
