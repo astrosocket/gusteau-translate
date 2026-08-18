@@ -34,7 +34,7 @@ class PackCubesStep(TranslationStep):
         particle_group = particle_group_from_output_path(field.output_path)
         LOGGER.debug(f"Doing initial cubing on {particle_group}")
 
-        bounding_box = context.quantities["BoundingBox"]
+        bounding_box = context.quantities["Bounding_box"]
         dataset = packingcubes.InMemory(
             positions=field.value, bounding_box=bounding_box
         )

@@ -205,8 +205,8 @@ def get_translation(
         from .translations.attribute_translation import SaveQuantityStep
 
         # Add saving the bounding box
-        pipeline_path_additions.setdefault("/Header.BoundingBox", []).append(
-            SaveQuantityStep(name="BoundingBox")
+        pipeline_path_additions.setdefault("/Header.Bounding_box", []).append(
+            SaveQuantityStep(name="Bounding_box")
         )
         gusteau["pipeline_path_additions"] = pipeline_path_additions
     return from_dict(
