@@ -1,5 +1,4 @@
 import logging
-import re
 from dataclasses import dataclass
 
 from ..base_steps.base import LoadStep
@@ -82,11 +81,17 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
                 else:
                     LOGGER.debug(f"Explicit translation for {attr_field.name}")
 
-        expression = (
-            "" if field.phys_CGS_expression is None else field.phys_CGS_expression
-        )
-        expression = re.search(r"\[(.+)\]", expression)
-        field.units = expression.group(1) if expression else ""
-        field.units = "" if field.units == "-" else field.units
+        if field.units is None:
+            expression = ""
+            terms = [f"U_{x}" for x in "ILMTt"]
+            for term in terms:
+                p = getattr(field, term, 0)
+                expression += (
+                    f"{' * ' if expression else ''}{term}{'' if p == 1 else f'**{p}'}"
+                    if p
+                    else ""
+                )
+
+            field.units = expression
 
         next_step(context)
