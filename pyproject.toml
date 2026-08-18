@@ -15,7 +15,7 @@ dependencies = [
     "tomlkit>=0.15.0,<0.16", 
     "ruamel-yaml>=0.19.1,<0.20",
     "sympy>=1.14.0,<2",
-    "packingcubes>=0.6.5,<0.7",
+    "packingcubes>=0.6.6,<0.7",
     "pydantic>=2.13.4,<3",
 ]
 name = "gusteau-translate"
@@ -133,8 +133,11 @@ pytest-cov = "*"
 [tool.pixi.feature.ci.tasks]
 test = "pytest"
 swift-eagle = "python tests/run_swift-eagle.py"
-compare-swift-eagle = "python tests/test_swift-eagle.py"
+compare-swift-eagle = "python tests/test_packingcubes.py -i tests/swift-eagle.hdf5"
 test-swift-eagle = [{task="swift-eagle"}, {task="compare-swift-eagle"}]
+illustrisTNG = "python tests/run_illustrisTNG.py"
+compare-illustrisTNG = "python tests/test_packingcubes.py -i tests/illustrisTNG.hdf5 -o tests/gusteauTNG.hdf5"
+test-illustrisTNG = [{task="illustrisTNG"}, {task="compare-illustrisTNG"}]
 
 [tool.pixi.feature.docs.dependencies]
 griffe-pydantic = "*"
