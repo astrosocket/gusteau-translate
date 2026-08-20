@@ -102,7 +102,6 @@ preview = ["pixi-build"]
 [tool.pixi.dependencies]
 ipykernel = ">=7.3.0,<8"
 pip = ">=26.1.2,<27"
-yamllint = ">=1.38.0,<2"
 
 [tool.pixi.pypi-dependencies]
 gusteau-translate = {path=".", editable=true}
@@ -113,12 +112,13 @@ h5py = ">=3.16.0, <4"
 [tool.pixi.feature.style.dependencies]
 ruff = ">=0.16.2,<0.17"
 ty = ">=0.0.70,<0.0.71"
+ryl = ">=0.21.0,<0.22"
 
 [tool.pixi.feature.style.tasks]
 format = "ruff format"
 check = "ruff check --fix"
 pylint = "ty check"
-ymllint = "yamllint src"
+ymllint = "ryl check --fix src"
 style = [{task="format"}, {task="check"}, {task="pylint"}, {task="ymllint"}]
 
 [tool.pixi.feature.git.dependencies]
