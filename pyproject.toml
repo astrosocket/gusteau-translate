@@ -141,7 +141,7 @@ test-illustrisTNG = [{task="illustrisTNG"}, {task="compare-illustrisTNG"}]
 
 [tool.pixi.feature.docs.dependencies]
 griffe-pydantic = "*"
-zensical = ">=0.0.53,<0.0.54"
+zensical = ">=0.0.56,<0.0.57"
 mkdocstrings-python = "*"
 mkdocstrings = "*"
 
