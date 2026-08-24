@@ -10,6 +10,7 @@ import h5py
 import unyt.dimensions as ud
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
+from unyt.unit_systems import UnitSystem
 
 from .config import (
     LOGGER_NAME,
@@ -107,6 +108,16 @@ def create_unit_registry(context: TranslationContext):
         registry.add(uname, base_value=float(mks.v), dimensions=dimension)
     LOGGER.debug(f"Created unit registry with lut: {registry.lut}")
     context.quantities["registry"] = registry
+    snapshot_units = UnitSystem(
+        name="snapshot",
+        length_unit="U_L",
+        mass_unit="U_M",
+        time_unit="U_t",
+        current_mks_unit="U_I",
+        temperature_unit="U_T",
+        registry=registry,
+    )
+    LOGGER.debug(f"Created snapshot unit system: {snapshot_units}")
 
 
 def set_cosmo_quantities(context: TranslationContext):
