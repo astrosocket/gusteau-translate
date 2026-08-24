@@ -326,6 +326,15 @@ class DatasetLoadStep(LoadStep):
         field = context.field
         if not isinstance(field, DatasetTranslation):
             raise TranslationClassError(step=self, field=field)
+        if field.input_path not in context.infile:
+            if field._required:
+                raise TranslationError(
+                    f"Required dataset {field.input_path} not found!"
+                )
+            LOGGER.debug(
+                f"Optional dataset {field.input_path} not present. Nothing to translate"
+            )
+            return
         LOGGER.debug(f"Loading dataset {field.input_path}")
         indata = cast(h5py.Dataset, context.infile[field.input_path])
         if field.columns is not None and len(indata.shape) < 2:

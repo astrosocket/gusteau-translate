@@ -155,6 +155,13 @@ class FieldTranslation[TranslationContext]:
 
     _: KW_ONLY
     dtype: str | None = None
+    """The dtype of the field (e.g. uint32, str)"""
+    _required: bool = False
+    """
+    Whether the field should raise an error on invalid input_path/output_path
+    Effectively, if required, field must be "loadable" and "saveable" for
+    whatever those words mean in the pipeline steps.
+    """
     _explicit: bool = True
     """Whether this translation was explicitly described in a style file"""
 
@@ -370,11 +377,17 @@ class Translation:
     ) -> Iterator[FieldTranslation]:
         for a in group.attrs:
             path = f"{start_path}.{a.name}"
-            yield map_.get(path, self._default_translation_factory("attribute", path))
+            field = map_.get(path, self._default_translation_factory("attribute", path))
+            field._required |= not a.optional
+            yield field
         for d in group.datagroups:
             if isinstance(d, DatasetSpec):
                 path = f"{start_path}/{d.name}"
-                yield map_.get(path, self._default_translation_factory("dataset", path))
+                field = map_.get(
+                    path, self._default_translation_factory("dataset", path)
+                )
+                field._required |= not d.optional
+                yield field
             elif isinstance(d, GroupSpec):
                 yield from self._iterate_fields_only(
                     d, map_, start_path=f"{start_path}/{d.name}"

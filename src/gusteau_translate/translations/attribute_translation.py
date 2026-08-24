@@ -171,6 +171,13 @@ class AttributeLoadStep(LoadStep):
         inpath = field.input_path.split(".")
         path = inpath[0]
         name = inpath[1]
+        if not (path in context.infile and name in context.infile[path].attrs):
+            if field._required:
+                raise TranslationError(
+                    f"Required attribute {field.input_path} not present!"
+                )
+            LOGGER.debug(f"Attribute {name} on {path} not present. Nothing to do")
+            return
         LOGGER.debug(f"Loading attribute {name} on {path}")
         field._value = process_attribute(
             context.infile[path].attrs[name],
@@ -188,6 +195,12 @@ class AttributeSaveStep(SaveStep):
         outpath = field.output_path.split(".")
         path = outpath[0]
         name = outpath[1]
+        if path not in context.outfile:
+            msg = f"{path} not present. Cannot save attribute on nonexistent object"
+            if field._required:
+                raise TranslationError(msg)
+            LOGGER.warning(msg)
+            return
         LOGGER.debug(f"Saving attribute {name}={field.value} on {path}")
         context.outfile[path].attrs[name] = field.value
         field.value = None

@@ -55,6 +55,15 @@ class CreateGroupTranslation(GroupTranslation):
 class GroupLoadStep(LoadStep):
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = cast(GroupTranslation, context.field)
+        if field.input_path not in context.infile:
+            if field._required:
+                raise TranslationError(
+                    f"Required group {field.input_path} not present!"
+                )
+            LOGGER.debug(
+                f"Optional group {field.input_path} not present. Nothing to translate"
+            )
+            return
         LOGGER.debug(f"Loading group {field.input_path}")
         next_step(context)
 
