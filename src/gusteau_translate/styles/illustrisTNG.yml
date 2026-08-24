@@ -1,0 +1,1569 @@
+# Translation style for the IllustrisTNG project snapshots
+# This should work for both the CAMELs snapshots and the regular snapshots,
+# assuming they are combined into a single file using virtual datasets.
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  pipeline_class_additions:
+    # Steps to add to every translation that has the listed (super)class
+    ParticleDatasetTranslation:
+      - ParseUnitsStep
+
+  pipeline_path_additions:
+    # Steps to add to every translation whose **output** path matches
+    # Patterns are matched a la pathlib's
+    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    # with case-sensitive set to True
+
+  # IllustrisTNG does not have any sort of top-level grid
+  # cubes_translator:
+
+
+# The following fields are in GUSTEAU Spec order (header first, then other
+# required groups)
+
+# Required groups
+Header:
+  # Note that a number of these fields are single element arrays instead of
+  # scalars
+  Code: {constant: AREPO, type: ConstantAttributeTranslation}
+  Source: {constant: illustrisTNG, type: ConstantAttributeTranslation}
+  Source_file: {file_path: illustrisTNG, type: FileContentsTranslation}
+  Particle_names:
+    constant: ["Gas", "ColdDarkMatter", "Stars", "BlackHoles"]
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: Particle_names}
+  Particle_numbers:
+    input_path: /Header.NumPart_Total
+    type: AttributeTranslation
+    dtype: uint64
+    pipeline:
+      Math2Step:
+        priority: 1
+        equation: "2**32 * np.uint64(y) + x"
+        external: /Header.NumPart_Total_HighWord
+      ReorderColumnStep: {priority: 2, new_width: 4, col_indices: [0, 1, 4, 5]}
+      SaveQuantityStep: {name: Particle_numbers}
+  Initial_mass_table:
+    input_path: /Header.MassTable
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep: {new_width: 4, col_indices: [0, 1, 4, 5]}
+  Bounding_box:
+    input_path: /Header.BoxSize
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [-1, -1, -1, 0, 0, 0]
+  Time:
+    type: AttributeTranslation
+    pipeline:
+      MathStep: {equation: "-x"}
+  Run_name:
+    constant: ""  # IllustrisTNG/Arepo doesn't store the run name anywhere
+    type: ConstantAttributeTranslation
+  Num_files_per_snapshot:
+    input_path: /Header.NumFilesPerSnapshot
+    type: AttributeTranslation
+  Dimension: {constant: 3, type: ConstantAttributeTranslation}
+  Part_type_mapping:
+    constant: [0, 1, -1, -1, 1, 2]
+    type: ConstantAttributeTranslation
+  Snapshot_date:
+    attribute: timestamp
+    type: SnapshotAttributeTranslation
+  Redshift:
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: z}
+  # Gadget-2 header fields
+  NumPart_ThisFile:
+    type: AttributeTranslation
+    dtype: uint32
+  MassTable:
+    type: AttributeTranslation
+  Flag_Sfr: {dtype: int32, type: AttributeTranslation}
+  Flag_Feedback: {dtype: int32, type: AttributeTranslation}
+  NumPart_Total:
+    type: AttributeTranslation
+    dtype: int32 # match Gadget-2
+  Flag_Cooling: {dtype: int32, type: AttributeTranslation}
+  BoxSize:
+    type: AttributeTranslation
+  Omega0:
+    type: AttributeTranslation
+  OmegaLambda:
+    type: AttributeTranslation
+  HubbleParam:
+    type: AttributeTranslation
+  Flag_StellarAge:
+    dtype: int32
+    type: AttributeTranslation
+  Flag_Metals: {dtype: int32, type: AttributeTranslation}
+  NumPart_Total_HW:
+    input_path: /Header.NumPart_Total_HighWord
+    type: AttributeTranslation
+    dtype: int32
+  Flag_Entropy_ICs:
+    # This flag does not appear to be present in the snapshots.
+    dtype: int32
+    constant: 0
+    type: ConstantAttributeTranslation
+Code:
+  Code: {constant: AREPO, type: ConstantAttributeTranslation}
+  Code_hash: {constant: "", type: ConstantAttributeTranslation}
+  Code_version:
+    constant: ""
+    type: ConstantAttributeTranslation
+  HDF5_version:
+    constant: ""
+    type: ConstantAttributeTranslation
+  VCS: {constant: git, type: ConstantAttributeTranslation}
+  VCS_id: {input_path: /Header.Git_commit, type: AttributeTranslation}
+  Git_date: {input_path: /Header.Git_date, type: AttributeTranslation}
+  VCS_repository:
+    constant: https://gitlab.mpcdf.mpg.de/vrs/arepo
+    type: ConstantAttributeTranslation
+  # TODO: populate the library versions dynamically
+  Library_versions:
+    constant: [""]
+    type: ConstantAttributeTranslation
+  Configuration_options:
+    constant: ""
+    type: ConstantAttributeTranslation
+Cosmology:
+  Is_cosmological:
+    constant: 1
+    type: ConstantAttributeTranslation
+  Omega_matter:
+    input_path: /Header.Omega0
+    type: AttributeTranslation
+  Omega_lambda:
+    input_path: /Header.OmegaLambda
+    type: AttributeTranslation
+  h:
+    input_path: /Header.HubbleParam
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: h}
+  Redshift:
+    input_path: /Header.Redshift
+    type: AttributeTranslation
+  Scale_factor:
+    input_path: /Header.Redshift
+    type: AttributeTranslation
+    pipeline:
+      MathStep: {equation: "1/(1+x)"}
+      SaveQuantityStep: {name: a}
+
+  Omega_baryon:
+    input_path: /Header.OmegaBaryon
+    type: AttributeTranslation
+
+  # The following are not present in the snapshot
+  # Critical_density:
+  # Critical_density_at_z0:
+  # H:
+  # H0:
+  # Hubble_time:
+  # Lookback_time:
+  # Mean_baryon_density:
+  # Mean_matter_density:
+  # N_eff:
+  # Omega_curvature:
+  # Omega_darkmatter:
+  # Omega_radiation:
+  # T_CMB_0:
+  # T_CMB_0_SI:
+  # Universe_age:
+  # a_begin:
+  # a_end:
+  # Time_begin:
+  # Time_end:
+  # w:
+  # w_0:
+  # w_a:
+RunInfo:
+  Parameters:
+    Composition_vector_length:
+      input_path: /Header.Composition_vector_length
+      type: AttributeTranslation
+  ParameterFiles:
+    Parameter_file: {constant: N/A, type: ConstantAttributeTranslation}
+    Parameter_file_path: {constant: "", type: ConstantAttributeTranslation}
+  Session_runtime: {constant: -1, type: ConstantAttributeTranslation}
+  Snapshot_date:
+    attribute: timestamp
+    type: SnapshotAttributeTranslation
+  System:
+    constant: ""
+    type: ConstantAttributeTranslation
+  Total_runtime: {constant: -1, type: ConstantAttributeTranslation}
+Units:
+  Unit_current_CGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_I}
+  Unit_length_CGS:
+    input_path: "/Header.UnitLength_in_cm"
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_L}
+  Unit_mass_CGS:
+    input_path: "/Header.UnitMass_in_g"
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_M}
+  Unit_temperature_CGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_T}
+  Unit_time_CGS:
+    input_path: "/Header.UnitVelocity_in_cm_per_s"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step: {equation: "y/x", external: "/Header.UnitLength_in_cm"}
+      SaveQuantityStep: {name: U_t}
+
+Parameters:
+  output_path: /RunInfo/Parameters
+  type: GroupTranslation
+
+Config:
+  output_path: /Code/Configuration
+  type: GroupTranslation
+
+
+PartType0:
+  output_path: /Gas
+  type: GroupTranslation
+  has_particles: true
+  description: "Baryonic gas particles with chemistry and hydrodynamics"
+  tags:
+    # - Hydrogen # Missing molecular hydrogen, so the tag doesn't apply
+    - Abundance
+    - MassFraction
+    - Feedback
+    - StellarWind
+    - Subgrid
+    - Particles
+    - Hydro
+    - Helium
+    - Magnetic
+    - Massive
+    - Metallic
+    - Potential
+    - Subfind
+  pipeline:
+    LinkStep:
+      path: /PartType0
+  children:
+    # Attributes
+    Aliases:
+      constant: ["PartType0"]
+      type: ConstantAttributeTranslation
+
+    # Groups
+    MassFractions:
+      description: "Mass fraction-based chemical abundances"
+      tags: []
+      type: CreateGroupTranslation
+      children:
+        Hydrogen:
+          description: "Hydrogen chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+        Helium:
+          description: "Helium chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+        Metals:
+          description: "Metallic chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+    Abundances:
+      type: CreateGroupTranslation
+      description: "Normalized number fraction-based chemical abundances"
+      tags: []
+      children:
+        Hydrogen:
+          description: "Hydrogen chemical quantities"
+          tags: []
+          type: CreateGroupTranslation
+    Subgrid:
+      description: >
+        This subgroup is the primary location to store miscellaneous subgrid
+        quantities
+      tags: []
+      type: CreateGroupTranslation
+      children:
+        MetalOrigins:
+          type: CreateGroupTranslation
+          description: >
+            Metal-origin tracking fields. Each keeps track of heavy elements
+            arising from particular processes.
+          tags: []
+    Feedback:
+      description: >
+        This subgroup is the primary location to store feedback-related
+        subgrid quantities
+      tags: ["NSNS"]
+      type: CreateGroupTranslation
+      children:
+        NSNS:
+          description: >
+            NS-NS merger-related feedback quantities
+          tags: []
+          type: CreateGroupTranslation
+    StellarWind:
+      description: >
+        This subgroup is the primary location to store stellar wind-related
+        subgrid quantities
+      tags: ["AGB", "SNII", "SNIa"]
+      type: CreateGroupTranslation
+      children:
+        AGB:
+          description: >
+            Asymptotic Giant Branch-related stellar wind quantities
+          tags: []
+          type: CreateGroupTranslation
+        SNIa:
+          description: >
+            Supernovae Type Ia-related stellar wind quantities
+          tags: []
+          type: CreateGroupTranslation
+        SNII:
+          description: >
+            Supernovae Type II-related stellar wind quantities
+          tags: []
+          type: CreateGroupTranslation
+    Subfind:
+      description: >
+        This subgroup is the primary location to store information related to
+        the SubFind algorithm.
+      tags: []
+      type: CreateGroupTranslation
+    Thermal:
+      description: "Group for thermal physics (cooling/heating) quantities"
+      tags: []
+      type: CreateGroupTranslation
+
+    # Datasets
+    Coordinates:
+      description: >
+        Spatial position within the periodic simulation domain of BoxSize.
+        Comoving coordinate.
+      units: kpc
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    Density:
+      description: >
+        Comoving mass density of cell (calculated as mass/volume)
+      units: "1e10 * Msun/kpc**3"
+      a_scale: -3
+      h_scale: 2
+      output_path: Densities
+      type: ParticleDatasetTranslation
+    ElectronAbundance:
+      description: >
+        Fractional electron number density with respect to the total hydrogen
+        number density, so $n_e=\text{ElectronAbundance} ∗ n_H$ where
+        $n_H=X_H∗ρ/m_p$. Use with caution for star-forming gas.
+      output_path: Abundances/Hydrogen/E
+      type: ParticleDatasetTranslation
+    EnergyDissipation:
+      description: >
+        Shock finder output: the dissipated energy rate (amount of kinetic
+        energy irreversibly transformed into thermal energy). Note units
+        correspond to (Energy/Time).
+      output_path: Thermal/EnergyDissipations
+      units: "1e10 * Msun/kpc * (km/s)**3"
+      a_scale: -1
+      h_scale: 0
+      type: ParticleDatasetTranslation
+    GFM_AGNRadiation:
+      # Not happy with name. Really sounds like it should be something closer to
+      # AGN_BolometricIntensities or similar
+      description: >
+        Bolometric intensity (physical units) at the position of this cell
+        arising from the radiation fields of nearby AGN. One should divide by
+        $4\pi$ to obtain the flux at this location, in the sense of
+        $F=L/(4 \pi R^2)$.
+      output_path: Subgrid/GFM_AGN_Radiations
+      units: "4*pi * erg/s/cm**2"
+      type: ParticleDatasetTranslation
+    GFM_CoolingRate:
+      description: >
+        The instantaneous net cooling rate experienced by this gas cell, in cgs
+        units (e.g. $\Lambda_{net}/n^2_H$).
+      output_path: Thermal/GFM_CoolingRates
+      units: "erg * cm**3 / s"
+      type: ParticleDatasetTranslation
+    GFM_Metallicity:
+      description: >
+        The ratio $M_Z/M_{total}$ where $M_Z$ is the total mass all metal
+        elements (above He). Is NOT in solar units. To convert to solar
+        metallicity, divide by 0.0127 (the primordial solar metallicity).
+      output_path: Subgrid/GFM_Metallicities
+      type: ParticleDatasetTranslation
+    GFM_WindDMVelDisp:
+      description: >
+        Equal to SubfindVelDisp (redundant).
+      output_path: Subgrid/GFM_WindDM_VelocityDispersions
+      units: "km/s"
+      type: ParticleDatasetTranslation
+    GFM_WindHostHaloMass:
+      description: >
+        Mass of the parent FOF halo of this gas cell (redundant).
+      output_path: Subgrid/GFM_WindHostHaloMasses
+      units: "1e10 * Msun"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    InternalEnergy:
+      # ryl disable rule:line-length
+      description: >
+        Internal (thermal) energy per unit mass for this gas cell. See
+        [FAQ](https://www.tng-project.org/data/docs/faq/) for conversion to gas
+        temperature. Use with caution for star-forming gas, as this corresponds
+        to the 'effective' temperature of the equation of state, which is not a
+        physical temperature. Note: this field has "corrected" values, and is
+        generally recommended for all uses, see the
+        [data release background](https://www.tng-project.org/data/docs/background/#internalenergy)
+        for details.
+      #ryl enable rule:line-length
+      output_path: InternalEnergies
+      units: "(km/s)**2"
+      type: ParticleDatasetTranslation
+    Machnumber:
+      description: >
+        Shock finder output: The Mach number (ratio of fluid velocity to sound
+        speed) of the gas cell, zero if no shock is present.
+      output_path: Subgrid/MachNumbers
+      type: ParticleDatasetTranslation
+    MagneticField:
+      description: >
+        The (comoving) magnetic field 3-vector (x,y,z) of this gas cell.
+      output_path: MagneticFields
+      U_M: 0.5
+      U_L: -0.5
+      U_t: -1
+      a_scale: -2
+      h_scale: 1
+      type: ParticleDatasetTranslation
+    MagneticFieldDivergence:
+      description: >
+        The divergence of the magnetic field in this cell.
+      output_path: MagneticFieldDivergences
+      units: "(1e10 * Msun)**(1/2) * km/s * (kpc)**(-5/2)"
+      a_scale: -2
+      h_scale: 3
+      type: ParticleDatasetTranslation
+    Masses:
+      description: >
+        Gas mass in this cell. Refinement/derefinement attempts to keep this
+        value within a factor of 2 of the targetGasMass for every cell.
+      units: "U_M"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    ParticleIDs:
+      description: >
+        The unique ID (uint64) of this gas cell. Constant for the duration of
+        the simulation. May cease to exist (as gas) in a future snapshot due to
+        conversion into a star/wind particle, accretion into a BH, or a
+        derefinement event.
+      type: ParticleDatasetTranslation
+    Potential:
+      description: >
+        Gravitational potential energy.
+      output_path: Potentials
+      units: "(km/s)**2"
+      a_scale: -1
+      type: ParticleDatasetTranslation
+    StarFormationRate:
+      description: >
+        Instantaneous star formation rate of this gas cell.
+      output_path: StarFormationRates
+      units: "Msun/yr"
+      type: ParticleDatasetTranslation
+    SubfindDMDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all CDM particles within a radius of
+        SubfindHsml.
+      output_path: Subfind/DMDensities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all particles/cells within a radius of
+        SubfindHsml.
+      output_path: Subfind/Densities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindHsml:
+      description: >
+        The comoving radius of the sphere centered on this cell enclosing the
+        $64\pm 1$ nearest dark matter particles.
+      output_path: Subfind/Hsml
+      units: "kpc"
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindVelDisp:
+      description: >
+        The 3D velocity dispersion of all dark matter particles within a radius
+        of SubfindHsml of this cell.
+      output_path: Subfind/VelocityDispersions
+      units: "km/s"
+      type: ParticleDatasetTranslation
+    Velocities:
+      description: >
+        Spatial velocity
+      units: "km/s"
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+
+
+# For the following, arranging by output field is more convenient
+# Note that we already created the groups above, otherwise we'd need to create
+# them here
+Gas:
+  Number_of_fields:
+    constant: 25
+    type: ConstantAttributeTranslation
+
+  # by group
+  Feedback:
+    NSNS:
+      MetalMassFractions:
+        input_path: /PartType0/GFM_MetalsTagged
+        columns: 3 # 0-based indexing
+        description: >
+          The total mass ejected from NS-NS merger events, which are modeled
+          stochastically (i.e. no fractional events) with a DTD scheme similar
+          to that used for SNIa, except with a different τ value. Note that the
+          units of NSNS are arbitrary. To obtain physical values in units of
+          solar masses, this field must be multiplied by
+          (MyPreferred_NSNS_MassPerEvent/NSNS_MassPerEvent), where
+          MyPreferred_NSNS_MassPerEvent is the amount of mass ejected per NS-NS
+          merger preferred for analysis (e.g. Shen+ 2015 uses here a value of
+          0.05M⊙), and NSNS_MassPerEvent is the value we have set for the
+          simulation, which varies by run. In particular, it is 0.05 for TNG100*
+          and 5000.0 for TNG300* and TNG50*. (^) Although the two shock finder
+          fields exist in subboxes, they are not updated for each subbox output,
+          but only occasionally, so in general one should NOT use these two
+          fields in subbox snapshots.
+        type: ParticleDatasetTranslation
+  MassFractions:
+    Hydrogen:
+      H:
+        # GFM_Metals[:,0] is the total n_H. n_HI = NeutralHydrogenAbundance * n_H
+        input_path: /PartType0/NeutralHydrogenAbundance
+        description: >
+          Mass fraction of atomic hydrogen. Use with caution for star-forming
+          gas, as the calculation is based on the 'effective' temperature of the
+          equation of state, which is not a physical temperature.
+        type: ParticleDatasetTranslation
+        pipeline:
+          Math2Step:
+            equation: "x*y"
+            external: /PartType0/GFM_Metals
+            external_columns: [0]
+          LinkStep:
+            path: /Gas/MassFractions/Hydrogen/Hydrogen
+      Hp:
+        # GFM_Metals[:,0] is the total n_H.
+        # n_HII = (1-NeutralHydrogenAbundance) * n_H
+        input_path: /PartType0/NeutralHydrogenAbundance
+        description: >
+          Mass fraction of protons (HII). Use with caution for star-forming
+          gas, as the calculation is based on the 'effective' temperature of the
+          equation of state, which is not a physical temperature.
+        type: ParticleDatasetTranslation
+        pipeline:
+          Math2Step:
+            equation: "(1-x)*y"
+            external: /PartType0/GFM_Metals
+            external_columns: [0]
+          LinkStep:
+            path: /Gas/MassFractions/Hydrogen/Proton
+      # Note: missing H2
+    Helium:
+      He:
+        input_path: /PartType0/GFM_Metals
+        columns: 1 # 0-based indexing
+        description: >
+          Mass fraction of neutral helium. Use with caution for
+          star-forming gas, as the calculation is based on the 'effective'
+          temperature of the equation of state, which is not a physical
+          temperature.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Helium/Helium
+      # Note: missing HeII, HeIII
+    Metals:
+      C:
+        input_path: /PartType0/GFM_Metals
+        columns: 2 # 0-based indexing
+        description: >
+          Mass fraction of carbon.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Carbon
+      N:
+        input_path: /PartType0/GFM_Metals
+        columns: 3 # 0-based indexing
+        description: >
+          Mass fraction of nitrogen.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Nitrogen
+      O:
+        input_path: /PartType0/GFM_Metals
+        columns: 4 # 0-based indexing
+        description: >
+          Mass fraction of oxygen.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Oxygen
+      Ne:
+        input_path: /PartType0/GFM_Metals
+        columns: 5 # 0-based indexing
+        description: >
+          Mass fraction of neon.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Neon
+      Mg:
+        input_path: /PartType0/GFM_Metals
+        columns: 6 # 0-based indexing
+        description: >
+          Mass fraction of magnesium.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Magnesium
+      Si:
+        input_path: /PartType0/GFM_Metals
+        columns: 7 # 0-based indexing
+        description: >
+          Mass fraction of silicon.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Silicon
+      Fe:
+        input_path: /PartType0/GFM_Metals
+        columns: 8 # 0-based indexing
+        description: >
+          Mass fraction of iron.
+        type: ParticleDatasetTranslation
+        pipeline:
+          LinkStep:
+            path: /Gas/MassFractions/Metals/Iron
+      Untracked:
+        input_path: /PartType0/GFM_Metals
+        columns: 9 # 0-based indexing
+        description: >
+          Mass fraction of of all other untracked metals.
+        type: ParticleDatasetTranslation
+      Metal_only_denominator:
+        constant: False
+        type: ConstantAttributeTranslation
+  StellarWind:
+    SNIa:
+      MetalMassFractions:
+        description: >
+          The total metals ejected by Type Ia Supernovae as a fraction of total
+          mass.
+        input_path: /PartType0/GFM_MetalsTagged
+        columns: 0
+        type: ParticleDatasetTranslation
+      IronMassFractions:
+        description: >
+          The total iron ejected by Type Ia Supernovae as a fraction of total
+          mass.
+        input_path: /PartType0/GFM_MetalsTagged
+        columns: 4
+        type: ParticleDatasetTranslation
+    SNII:
+      MetalMassFractions:
+        description: >
+          The total metals ejected by Type II Supernovae as a fraction of total
+          mass.
+        input_path: /PartType0/GFM_MetalsTagged
+        columns: 1
+        type: ParticleDatasetTranslation
+      IronMassFractions:
+        description: >
+          The total iron ejected by Type II Supernovae as a fraction of total
+          mass.
+        input_path: /PartType0/GFM_MetalsTagged
+        columns: 5
+        type: ParticleDatasetTranslation
+    AGB:
+      MetalMassFractions:
+        description: >
+          The total metals ejected by Type Ia Supernovae as a fraction of total
+          mass.
+        input_path: /PartType0/GFM_MetalsTagged
+        columns: 2
+        type: ParticleDatasetTranslation
+  Subfind:
+    Num_nearest:
+      constant: 32
+      type: ConstantAttributeTranslation
+    Dark_matter_species:
+      constant: [1]
+      type: ConstantAttributeTranslation
+
+PartType1:
+  output_path: /ColdDarkMatter
+  type: GroupTranslation
+  description: "Cold dark matter with nbody physics"
+  tags:
+    - Massive
+    - Particles
+    - Potential
+    - Subfind
+  has_particles: true
+  pipeline:
+    LinkStep:
+      path: /PartType1
+  children:
+    # Attributes
+    Aliases:
+      constant: ["PartType1"]
+      type: ConstantAttributeTranslation
+
+    # Groups:
+    Subfind:
+      description: >
+        This subgroup is the primary location to store information related to
+        the SubFind algorithm.
+      tags: []
+      type: CreateGroupTranslation
+
+    # Datasets:
+    Coordinates:
+      description: >
+        Spatial position within the periodic simulation domain of BoxSize.
+        Comoving coordinate.
+      units: kpc
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    Masses:
+      description: >
+        Mass of this DM particle. Note that all DM particles have the same mass.
+      units: "U_M"
+      h_scale: -1
+      constant: 0
+      like_dataset: /PartType1/ParticleIDs
+      type: ConstantParticleDatasetTranslation
+      pipeline:
+        Math2Step:
+          equation: "x+y"
+          external: /Header.MassTable
+          external_columns: [1]
+    ParticleIDs:
+      description: >
+        The unique ID (uint64) of this DM particle. Constant for the duration of
+        the simulation.
+      type: ParticleDatasetTranslation
+    Potential:
+      description: >
+        Gravitational potential energy.
+      output_path: Potentials
+      units: "(km/s)**2"
+      a_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindDMDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all CDM particles within a radius of
+        SubfindHsml.
+      output_path: Subfind/DMDensities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all particles/cells within a radius of
+        SubfindHsml.
+      output_path: Subfind/Densities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindHsml:
+      description: >
+        The comoving radius of the sphere centered on this cell enclosing the
+        $64\pm 1$ nearest dark matter particles.
+      output_path: Subfind/Hsml
+      units: "kpc"
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindVelDisp:
+      description: >
+        The 3D velocity dispersion of all dark matter particles within a radius
+        of SubfindHsml of this cell.
+      output_path: Subfind/VelocityDispersions
+      units: "km/s"
+      type: ParticleDatasetTranslation
+    Velocities:
+      description: >
+        Spatial velocity
+      units: "km/s"
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+
+
+ColdDarkMatter:
+  Number_of_fields:
+    constant: 8
+    type: ConstantAttributeTranslation
+  Subfind:
+    Num_nearest:
+      constant: 32
+      type: ConstantAttributeTranslation
+    Dark_matter_species:
+      constant: [1]
+      type: ConstantAttributeTranslation
+
+
+PartType4:
+  output_path: /Stars
+  type: GroupTranslation
+  has_particles: true
+  description: "Stellar particles"
+  tags:
+    - Subgrid
+    - Particles
+    - Massive
+    - Potential
+    - Transform
+  pipeline:
+    LinkStep:
+      path: /PartType4
+  children:
+    # Attributes
+    Aliases:
+      constant: ["PartType4"]
+      type: ConstantAttributeTranslation
+
+    # Groups
+    Subgrid:
+      description: >
+        This subgroup is the primary location to store miscellaneous subgrid
+        quantities
+      tags: []
+      type: CreateGroupTranslation
+      children:
+        StellarPhotometrics:
+          input_description: From /PartType4/GFM_StellarPhotometrics
+          description: >
+            Stellar magnitudes in eight bands: U, B, V, K, g, r, i, z. In
+            detail, these are: Buser's X filter, where X=U,B3,V (Vega
+            magnitudes), then IR K filter + Palomar 200 IR detectors +
+            atmosphere.57 (Vega), then SDSS Camera X Response Function, airmass
+            = 1.3 (June 2001), where X=g,r,i,z (AB magnitudes). They can be
+            found in the filters.log file in the BC03 package. The details on
+            the four SDSS filters can be found in Stoughton et al. 2002,
+            section 3.2.1.
+          tags: []
+          type: CreateGroupTranslation
+    FromParent_Gas:
+      type: CreateGroupTranslation
+      description: >
+        Fields retained from the parent gas particle that are no longer updated
+      tags: ["MassFraction", "Metallic", "Feedback", "StellarWind", "Subgrid"]
+      children:
+        Feedback:
+          description: >
+            This subgroup is the primary location to store feedback-related
+            subgrid quantities
+          tags: ["NSNS"]
+          type: CreateGroupTranslation
+          children:
+            NSNS:
+              description: >
+                NS-NS merger-related feedback quantities
+              tags: []
+              type: CreateGroupTranslation
+        StellarWind:
+          description: >
+            This subgroup is the primary location to store stellar
+            wind-related subgrid quantities
+          tags: ["AGB", "SNII", "SNIa"]
+          type: CreateGroupTranslation
+          children:
+            AGB:
+              description: >
+                Asymptotic Giant Branch-related stellar wind quantities
+              tags: []
+              type: CreateGroupTranslation
+            SNIa:
+              description: >
+                Supernovae Type Ia-related stellar wind quantities
+              tags: []
+              type: CreateGroupTranslation
+            SNII:
+              description: >
+                Supernovae Type II-related stellar wind quantities
+              tags: []
+              type: CreateGroupTranslation
+        MassFractions:
+          description: "Mass fraction-based chemical abundances"
+          tags: []
+          type: CreateGroupTranslation
+          children:
+            Hydrogen:
+              description: "Hydrogen chemical quantities"
+              tags: []
+              type: CreateGroupTranslation
+            Helium:
+              description: "Helium chemical quantities"
+              tags: []
+              type: CreateGroupTranslation
+            Metals:
+              description: "Metallic chemical quantities"
+              tags: []
+              type: CreateGroupTranslation
+              children:
+                Metal_only_denominator:
+                  constant: False
+                  type: ConstantAttributeTranslation
+        Subgrid:
+          description: >
+            This subgroup is the primary location to store miscellaneous subgrid
+            quantities
+          tags: []
+          type: CreateGroupTranslation
+    Subfind:
+      description: >
+        This subgroup is the primary location to store information related to
+        the SubFind algorithm.
+      tags: []
+      type: CreateGroupTranslation
+
+
+    # Datasets
+    BirthPos:
+      description: >
+        Spatial position within the periodic box where this star particle
+        initially formed.
+      output_path: Subgrid/BirthPositions
+      units: "kpc"
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BirthVel:
+      description: >
+        Spatial velocity of the parent star-forming gas cell at the time of
+        formation.
+      output_path: Subgrid/BirthVelocities
+      units: "km/s"
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+    Coordinates:
+      description: >
+        Spatial position within the periodic simulation domain of BoxSize.
+        Comoving coordinate.
+      units: kpc
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    GFM_InitialMass:
+      description: >
+        Mass of this star particle  when it was formed (will subsequentlly
+        decrease due to stellar evolution)
+      output_path: Subgrid/InitialMasses
+      units: "1e10 * Msun"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    GFM_Metallicity:
+      description: >
+        The ratio $M_Z/M_{total}$ where $M_Z$ is the total mass all metal
+        elements (above He). Is NOT in solar units. To convert to solar
+        metallicity, divide by 0.0127 (the primordial solar metallicity).
+        Inherited from the gas cell spawning/converted into this star, at time
+        of birth.
+      output_path: FromParent_Gas/Subgrid/GFM_Metallicities
+      type: ParticleDatasetTranslation
+    GFM_StellarFormationTime:
+      description: >
+        The exact time (given as the scale-factor) when this star was formed.
+        Note: the only difference between a real star (>0) and a wind phase gas
+        cell (<=0) is the sign of this quantity
+      output_path: GFM_StellarFormationTimes
+      type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep: {path: /Stars/TransformScaleFactors}
+    Masses:
+      description: >
+        Mass of this star or wind phase cell
+      units: "U_M"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    ParticleIDs:
+      description: >
+        The unique ID (uint64) of this star/wind cell. Constant for the duration
+        of the simulation.
+      type: ParticleDatasetTranslation
+    Potential:
+      description: >
+        Gravitational potential energy.
+      output_path: Potentials
+      units: "(km/s)**2"
+      a_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindDMDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all CDM particles within a radius of
+        SubfindHsml.
+      output_path: Subfind/DMDensities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all particles/cells within a radius of
+        SubfindHsml.
+      output_path: Subfind/Densities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindHsml:
+      description: >
+        The comoving radius of the sphere centered on this cell enclosing the
+        $64\pm 1$ nearest dark matter particles.
+      output_path: Subfind/Hsml
+      units: "kpc"
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindVelDisp:
+      description: >
+        The 3D velocity dispersion of all dark matter particles within a radius
+        of SubfindHsml of this cell.
+      output_path: Subfind/VelocityDispersions
+      units: "km/s"
+      type: ParticleDatasetTranslation
+    Velocities:
+      description: >
+        Spatial velocity
+      units: "km/s"
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+
+# For the following, arranging by output field is more convenient
+# Note that we already created the groups above, otherwise we'd need to create
+# them here
+Stars:
+  Number_of_fields:
+    constant: 8
+    type: ConstantAttributeTranslation
+
+  FromParent_Gas:
+    Feedback:
+      NSNS:
+        MetalMassFractions:
+          input_path: /PartType4/GFM_MetalsTagged
+          columns: 3 # 0-based indexing
+          description: >
+            The total mass ejected from NS-NS merger events, which are modeled
+            stochastically (i.e. no fractional events) with a DTD scheme similar
+            to that used for SNIa, except with a different τ value. Note that the
+            units of NSNS are arbitrary. To obtain physical values in units of
+            solar masses, this field must be multiplied by
+            (MyPreferred_NSNS_MassPerEvent/NSNS_MassPerEvent), where
+            MyPreferred_NSNS_MassPerEvent is the amount of mass ejected per NS-NS
+            merger preferred for analysis (e.g. Shen+ 2015 uses here a value of
+            0.05M⊙), and NSNS_MassPerEvent is the value we have set for the
+            simulation, which varies by run. In particular, it is 0.05 for TNG100*
+            and 5000.0 for TNG300* and TNG50*. (^) Although the two shock finder
+            fields exist in subboxes, they are not updated for each subbox output,
+            but only occasionally, so in general one should NOT use these two
+            fields in subbox snapshots.
+          type: ParticleDatasetTranslation
+    MassFractions:
+      Hydrogen:
+        H_total:
+          # GFM_Metals[:,0] is the total n_H.
+          # For star particles, we do not have the neutral hydrogen fraction, so
+          # cannot obtain HI and HII
+          input_path: /PartType4/GFM_Metals
+          columns: 0 # 0-based indexing
+          description: >
+            Mass fraction of all hydrogen. Use with caution for star-forming
+            gas, as the calculation is based on the 'effective' temperature of the
+            equation of state, which is not a physical temperature.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Hydrogen/TotalHydrogen
+      Helium:
+        He:
+          input_path: /PartType4/GFM_Metals
+          columns: 1 # 0-based indexing
+          description: >
+            Mass fraction of neutral helium. Use with caution for
+            star-forming gas, as the calculation is based on the 'effective'
+            temperature of the equation of state, which is not a physical
+            temperature.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Helium/Helium
+        # Note: missing HeII, HeIII
+      Metals:
+        C:
+          input_path: /PartType4/GFM_Metals
+          columns: 2 # 0-based indexing
+          description: >
+            Mass fraction of carbon.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Carbon
+        N:
+          input_path: /PartType4/GFM_Metals
+          columns: 3 # 0-based indexing
+          description: >
+            Mass fraction of nitrogen.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Nitrogen
+        O:
+          input_path: /PartType4/GFM_Metals
+          columns: 4 # 0-based indexing
+          description: >
+            Mass fraction of oxygen.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Oxygen
+        Ne:
+          input_path: /PartType4/GFM_Metals
+          columns: 5 # 0-based indexing
+          description: >
+            Mass fraction of neon.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Neon
+        Mg:
+          input_path: /PartType4/GFM_Metals
+          columns: 6 # 0-based indexing
+          description: >
+            Mass fraction of magnesium.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Magnesium
+        Si:
+          input_path: /PartType4/GFM_Metals
+          columns: 7 # 0-based indexing
+          description: >
+            Mass fraction of silicon.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Silicon
+        Fe:
+          input_path: /PartType4/GFM_Metals
+          columns: 8 # 0-based indexing
+          description: >
+            Mass fraction of iron.
+          type: ParticleDatasetTranslation
+          pipeline:
+            LinkStep:
+              path: /Stars/FromParent_Gas/MassFractions/Metals/Iron
+        Untracked:
+          input_path: /PartType4/GFM_Metals
+          columns: 9 # 0-based indexing
+          description: >
+            Mass fraction of of all other untracked metals.
+          type: ParticleDatasetTranslation
+        Metal_only_denominator:
+          constant: False
+          type: ConstantAttributeTranslation
+    StellarWind:
+      SNIa:
+        MetalMassFractions:
+          description: >
+            The total metals ejected by Type Ia Supernovae as a fraction of total
+            mass.
+          input_path: /PartType4/GFM_MetalsTagged
+          columns: 0
+          type: ParticleDatasetTranslation
+        IronMassFractions:
+          description: >
+            The total iron ejected by Type Ia Supernovae as a fraction of total
+            mass.
+          input_path: /PartType4/GFM_MetalsTagged
+          columns: 4
+          type: ParticleDatasetTranslation
+      SNII:
+        MetalMassFractions:
+          description: >
+            The total metals ejected by Type II Supernovae as a fraction of total
+            mass.
+          input_path: /PartType4/GFM_MetalsTagged
+          columns: 1
+          type: ParticleDatasetTranslation
+        IronMassFractions:
+          description: >
+            The total iron ejected by Type II Supernovae as a fraction of total
+            mass.
+          input_path: /PartType4/GFM_MetalsTagged
+          columns: 5
+          type: ParticleDatasetTranslation
+      AGB:
+        MetalMassFractions:
+          description: >
+            The total metals ejected by Type Ia Supernovae as a fraction of total
+            mass.
+          input_path: /PartType4/GFM_MetalsTagged
+          columns: 2
+          type: ParticleDatasetTranslation
+  Subfind:
+    Num_nearest:
+      constant: 64
+      type: ConstantAttributeTranslation
+    Dark_matter_species:
+      constant: [1]
+      type: ConstantAttributeTranslation
+  Subgrid:
+    StellarPhotometrics:
+      U_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the U band.
+        columns: 0 # 0-based indexing
+        type: ParticleDatasetTranslation
+      B_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the B band.
+        columns: 1 # 0-based indexing
+        type: ParticleDatasetTranslation
+      V_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the V band.
+        columns: 2 # 0-based indexing
+        type: ParticleDatasetTranslation
+      K_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the K band.
+        columns: 3 # 0-based indexing
+        type: ParticleDatasetTranslation
+      g_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the g band.
+        columns: 4 # 0-based indexing
+        type: ParticleDatasetTranslation
+      r_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the r band.
+        columns: 5 # 0-based indexing
+        type: ParticleDatasetTranslation
+      i_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the i band.
+        columns: 6 # 0-based indexing
+        type: ParticleDatasetTranslation
+      z_band:
+        input_path: /PartType4/GFM_StellarPhotometrics
+        description: >
+          Stellar magnitude in the z band.
+        columns: 7 # 0-based indexing
+        type: ParticleDatasetTranslation
+  PreviousParticleTypes:
+    type: ConstantParticleDatasetTranslation
+    description: "Particle name index of previous particle type"
+    constant: 0
+    like_dataset: /PartType4/ParticleIDs
+
+PartType5:
+  output_path: /BlackHoles
+  type: GroupTranslation
+  has_particles: true
+  description: "Black hole particles"
+  tags:
+    - Black-hole
+    - Particles
+    - Massive
+    - Potential
+  pipeline:
+    LinkStep:
+      path: /PartType5
+  children:
+    # Attributes
+    Aliases:
+      constant: ["PartType5"]
+      type: ConstantAttributeTranslation
+
+    # Groups
+    BH:
+      description: >
+        This subgroup is the primary location to store black hole-related
+        subgrid quantities
+      tags: []
+      type: CreateGroupTranslation
+    Subfind:
+      description: >
+        This subgroup is the primary location to store information related to
+        the SubFind algorithm.
+      tags: []
+      type: CreateGroupTranslation
+
+    # Datasets
+    BH_BPressure:
+      description: >
+        The mean magnetic pressure of gas cells within a radius of BH_Hsml,
+        kernel and volume weighted (kernel weight clipped at a maximum of
+        wt=2.5). Units are those of MagneticField2. Note: is still in
+        Heavyside-Lorentz, not Gauss, so multiply by 4π to be unit consistent
+        with MagneticField.
+      output_path: BH/BPressures
+      units: "1e10 * Msun * (km/s)**2 / kpc**3"
+      h_scale: 4
+      a_scale: -4
+      type: ParticleDatasetTranslation
+    BH_CumEgyInjection_QM:
+      # This field could also go in Feedback/AGN
+      description: >
+        Cumulative amount of thermal AGN feedback energy injected into
+        surrounding gas in the high accretion-state (quasar) mode, total over
+        the entire lifetime of this blackhole. Field summed during BH-BH merger.
+      output_path: BH/QM_CumulativeEnergyInjections
+      units: "1e10 * Msun * kpc**2 / (0.978*Gyr)**2"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_CumEgyInjection_RM:
+      # This field could also go in Feedback/AGN
+      description: >
+        Cumulative amount of thermal AGN feedback energy injected into
+        surrounding gas in the low accretion-state (wind) mode, total over
+        the entire lifetime of this blackhole. Field summed during BH-BH merger.
+      output_path: BH/RM_CumulativeEnergyInjections
+      units: "1e10 * Msun * kpc**2 / (0.978*Gyr)**2"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_CumMassGrowth_QM:
+      description: >
+        Cumulative mass accreted onto the BH in the high accretion-state
+        (quasar) mode, total over the entire lifetime of this blackhole. Field
+        summed during BH-BH merger.
+      output_path: BH/QM_CumulativeMassGrowths
+      units: "1e10 * Msun"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_CumMassGrowth_RM:
+      description: >
+        Cumulative mass accreted onto the BH in the low accretion-state
+        (wind) mode, total over the entire lifetime of this blackhole. Field
+        summed during BH-BH merger.
+      output_path: BH/RM_CumulativeMassGrowths
+      units: "1e10 * Msun"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_Density:
+      description: >
+        Local comoving gas density averaged over the nearest neighbors of the
+        BH.
+      output_path: BH/Densities
+      units: "1e10 * Msun/kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    BH_HostHaloMass:
+      description: >
+        Mass of the parent FoF halo of this blackhole.
+      output_path: BH/HostHaloMasses
+      units: "1e10 * Msun"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_Hsml:
+      description: >
+        The comoving radius of the sphere enclosing the 64,128,256 (for
+        TNG100-3, -2, and -1 resolutions) $\pm 4$ nearest-neighbor gas cells
+        around the BH.
+      output_path: BH/Hsml
+      units: "kpc"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_Mass:
+      description: >
+        Actual mass of the BH; does not include gas reservoir. Monotonically
+        increases with time according to the accretion prescription, starting
+        from the seed mass.
+      output_path: BH/Masses
+      units: "1e10 * Msun"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    BH_Mdot:
+      description: >
+        The mass accretion rate onto the black hole, instantaneous.
+      output_path: BH/TotalAccretionRates
+      units: "1e10 * Msun / (0.978 * Gyr)"
+      type: ParticleDatasetTranslation
+    BH_MdotBondi:
+      description: >
+        Current estimate of the Bondi accretion rate for this BH. Calculated as
+        $\dot{M}_{\text{bondi}} =
+        (\alpha4\pi G^2 M_{BH}^2\rho)/(c_s^2+v_{BH^2})^{3/2}$
+        with $\alpha=1$ and $v_{BH}=0$ for TNG.
+      output_path: BH/BondiAccretionRates
+      units: "1e10 * Msun / (0.978 * Gyr)"
+      type: ParticleDatasetTranslation
+    BH_MdotEddington:
+      description: >
+        Current estimate of the Eddington accretion rate for this BH.
+        Calculated as
+        $\dot{M}_{\text{edd}}=(4\pi G M_{BH}m_p)/(\epsilon_r \sigma_T c)$ where
+        $\epsilon_r=0.2$ is the radiative efficiency parameter.
+      output_path: BH/EddingtonAccretionRates
+      units: "1e10 * Msun / (0.978 * Gyr)"
+      type: ParticleDatasetTranslation
+    BH_Pressure:
+      description: >
+        Gas pressure near the BH, defined as $(\gamma−1)\rho u$, where $\rho$ is
+        the local comoving gas density (BH_Density), $u$ is BH_U. If this
+        pressure is lower than the reference gas pressure, $P_{ref}$, the BH
+        accretion rate is lowered by $(P_{ext}/P_{ref})^2$.
+      output_path: BH/Pressures
+      units: "1e10 * Msun / (kpc * (0.978 * Gyr)**2)"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    BH_Progs:
+      description: >
+        Total number of BHs that have merged into this BH.
+      output_path: BH/MergedBlackHoleNumbers
+      type: ParticleDatasetTranslation
+    BH_U:
+      description: >
+        Thermal energy per unit mass in quasar-heated bubbles near the BH. Used
+        to define the BH_Pressure. Not to be confused with the "radio mode"
+        bubbles injected via the unified feedback model.
+      output_path: BH/BubbleThermalEnergies
+      units: "(km/s)**2"
+      type: ParticleDatasetTranslation
+    Coordinates:
+      description: >
+        Spatial position within the periodic simulation domain of BoxSize.
+        Comoving coordinate.
+      units: kpc
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    Masses:
+      description: >
+        Mass of this star or wind phase cell
+      units: "U_M"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    ParticleIDs:
+      description: >
+        The unique ID (uint64) of this star/wind cell. Constant for the duration
+        of the simulation.
+      type: ParticleDatasetTranslation
+    Potential:
+      description: >
+        Gravitational potential energy.
+      output_path: Potentials
+      units: "(km/s)**2"
+      a_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindDMDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all CDM particles within a radius of
+        SubfindHsml.
+      output_path: Subfind/DMDensities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindDensity:
+      description: >
+        The local total comoving mass density, estimated using the standard
+        cubic-spline SPH kernel over all particles/cells within a radius of
+        SubfindHsml.
+      output_path: Subfind/Densities
+      units: "1e10 * Msun / kpc**3"
+      h_scale: 2
+      a_scale: -3
+      type: ParticleDatasetTranslation
+    SubfindHsml:
+      description: >
+        The comoving radius of the sphere centered on this cell enclosing the
+        $64\pm 1$ nearest dark matter particles.
+      output_path: Subfind/Hsml
+      units: "kpc"
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    SubfindVelDisp:
+      description: >
+        The 3D velocity dispersion of all dark matter particles within a radius
+        of SubfindHsml of this cell.
+      output_path: Subfind/VelocityDispersions
+      units: "km/s"
+      type: ParticleDatasetTranslation
+    Velocities:
+      description: >
+        Spatial velocity
+      units: "km/s"
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+
+
+# For the following, arranging by output field is more convenient
+# Note that we already created the groups above, otherwise we'd need to create
+# them here
+BlackHoles:
+  Number_of_fields:
+    constant: 24
+    type: ConstantAttributeTranslation
+
+  Subfind:
+    Num_nearest:
+      constant: 64
+      type: ConstantAttributeTranslation
+    Dark_matter_species:
+      constant: [1]
+      type: ConstantAttributeTranslation
