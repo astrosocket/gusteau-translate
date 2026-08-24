@@ -57,7 +57,7 @@ class ReorderColumnStep(TranslationStep):
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
-        old_value = np.array(field.value)
+        old_value = np.atleast_1d(field.value)
         shape = old_value.shape
         shape = (self.new_width,) if len(shape) <= 1 else (shape[0], self.new_width)
         value = np.full_like(old_value, shape=shape, fill_value=self.fill_value)
