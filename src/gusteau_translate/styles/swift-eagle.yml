@@ -310,6 +310,46 @@ Parameters:
   output_path: /RunInfo/Parameters
   type: GroupTranslation
 
+GravityScheme:
+  output_path: /RunInfo/GravityScheme
+  type: GroupTranslation
+
+HydroScheme:
+  output_path: /RunInfo/HydroScheme
+  type: GroupTranslation
+
+ICs_parameters:
+  output_path: /RunInfo/ICsParameters
+  type: GroupTranslation
+
+InternalCodeUnits:
+  output_path: /RunInfo/InternalCodeUnits
+  type: GroupTranslation
+
+PhysicalConstants:
+  output_path: /RunInfo/PhysicalConstants
+  type: GroupTranslation
+
+Policy:
+  output_path: /RunInfo/Policy
+  type: GroupTranslation
+
+RecordingTriggers:
+  output_path: /RunInfo/RecordingTriggers
+  type: GroupTranslation
+
+StarsScheme:
+  output_path: /RunInfo/StarsScheme
+  type: GroupTranslation
+
+SubgridScheme:
+  output_path: /RunInfo/SubgridScheme
+  type: GroupTranslation
+
+UnusedParameters:
+  output_path: /RunInfo/Parameters/Unused
+  type: GroupTranslation
+
 Cells:
   Meta-data:
     output_path: /Cells/Metadata
