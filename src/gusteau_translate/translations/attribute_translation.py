@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import datetime
 import logging
 from dataclasses import KW_ONLY, InitVar, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -99,6 +100,22 @@ class FileContentsTranslation(AttributeTranslation):
     @value.setter
     def value(self, new_value):
         self._value = new_value
+
+
+@dataclass
+class SnapshotAttributeTranslation(AttributeTranslation):
+    _: KW_ONLY
+    attribute: Literal["timestamp"] | str
+    """Name of the file attribute to use (obtained through Path.stat). 
+    Note that timestamp will return an ISO8601 formatted version of st_mtime
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        # don't need to load anything
+        self.pipeline.remove("AttributeLoadStep")
+        self.pipeline.append(SnapshotAttributeLoadStep(attribute=self.attribute))
+        self.input_description = f"Generated from {self.input_path}"
 
 
 def process_attribute(
@@ -218,4 +235,28 @@ class SaveQuantityStep(TranslationStep):
         if not isinstance(field, AttributeTranslation):
             raise TranslationClassError(step=self, field=field)
         context.quantities[self.name] = field.value
+        next_step(context)
+
+
+@dataclass
+class SnapshotAttributeLoadStep(LoadStep):
+    _: KW_ONLY
+    attribute: Literal["timestamp"] | str
+    """Name of the file attribute to use (obtained through Path.stat). 
+    Note that timestamp will return an ISO8601 formatted version of st_mtime
+    """
+
+    def _load_file_attributes(self, file_path) -> str:
+        stat_result = Path(file_path).stat()
+        if self.attribute == "timestamp":
+            attribute = str(
+                datetime.datetime.fromtimestamp(stat_result.st_mtime, datetime.UTC)
+            )
+        else:
+            attribute = str(stat_result.__dict__.get(self.attribute, "unknown"))
+        return attribute
+
+    def __call__(self, context: TranslationContext, next_step: NextStep):
+        infile = context.infile
+        context.field.value = self._load_file_attributes(infile.filename)
         next_step(context)
