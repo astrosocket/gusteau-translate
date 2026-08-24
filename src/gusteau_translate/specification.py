@@ -1341,7 +1341,8 @@ class GUSTEAU:
         h5_file.visititems_links(_count_duplicate_links)
         LOGGER.debug(f"Total Soft/External Links: {len(links)}")
         not_visited = cast(set[str], h5_file.keys()) - visited_groups - links
-        LOGGER.info(f"Did not validate: {not_visited}")
+        if not_visited:
+            LOGGER.info(f"Did not validate: {not_visited}")
 
         self._validate_metadata_attribute(
             h5_file, validation_info=validation_info, options=options
