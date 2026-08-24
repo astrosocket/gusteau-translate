@@ -2,7 +2,6 @@ from dataclasses import KW_ONLY, dataclass
 from typing import LiteralString
 
 import numpy as np
-from sympy import symbols, sympify
 
 from ..pipeline import NextStep
 from ..translation_base import (
@@ -26,14 +25,16 @@ class MathStep(TranslationStep):
     _: KW_ONLY
     equation: LiteralString
     """A string literal defining the mathematical expression"""
-    output_type: type = np.float64
-    """The numeric output type"""
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
-        expr = sympify(self.equation)
-        x = symbols("x")
-        field.value = np.array(expr.subs(x, field.value.v)).astype(self.output_type)
+        # expr = sympify(self.equation)
+        # x = symbols("x")
+        # field.value = np.array(expr.subs(x, unyt_array(field.value).v)).astype(
+        #     field.dtype
+        # )
+        x = field.value
+        field.value = np.asarray(eval(self.equation)).astype(field.dtype)
         next_step(context)
 
 
