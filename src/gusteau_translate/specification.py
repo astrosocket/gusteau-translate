@@ -967,7 +967,7 @@ hydro = TagSpec(
     datagroups=[
         ParticleDatasetSpec(name="InternalEnergies"),
         ParticleDatasetSpec(name="Densities"),
-        ParticleDatasetSpec(name="KernelLengths"),
+        OptionalParticleDatasetSpec(name="KernelLengths"),
     ],
 )
 
@@ -1020,17 +1020,19 @@ stellar_wind = TagSpec(
 subfind = TagSpec(
     name="Subfind",
     includes={"Massive": ABOVE},
-    attrs=[
-        AttributeSpec(name="Num_nearest", attr_type=number, sets_info="NumNearest"),
-        AttributeSpec(
-            name="Dark_matter_species",
-            attr_type=num_str_array,
-            sets_info="Subfind_dark_matter_species",
-        ),
-    ],
     datagroups=[
         TaggedGroupSpec(
             name="Subfind",
+            attrs=[
+                AttributeSpec(
+                    name="Num_nearest", attr_type=number, sets_info="NumNearest"
+                ),
+                AttributeSpec(
+                    name="Dark_matter_species",
+                    attr_type=num_str_array,
+                    sets_info="Subfind_dark_matter_species",
+                ),
+            ],
             datagroups=[
                 ParticleDatasetSpec(name="DMDensities"),
                 ParticleDatasetSpec(name="Densities"),
@@ -1109,8 +1111,8 @@ helium = ChemicalTagSpec(
     group="Helium",
     datagroups=[
         ParticleDatasetSpec(name="He"),
-        ParticleDatasetSpec(name="Hep"),
-        ParticleDatasetSpec(name="Hepp"),
+        OptionalParticleDatasetSpec(name="Hep"),
+        OptionalParticleDatasetSpec(name="Hepp"),
     ],
 )
 
