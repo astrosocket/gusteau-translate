@@ -480,6 +480,7 @@ class MakeParticleAttributesStep(LoadStep):
                 unyt_quantity(1, units=uname, registry=registry) ** exponents[uname]
             )
         conversion_factor_cgs /= unyt_quantity(1, "dimensionless", registry=registry)
+        conversion_factor_cgs.convert_to_cgs()
 
         conversion_factor_physcgs = cast(
             unyt_quantity,
@@ -500,15 +501,18 @@ class MakeParticleAttributesStep(LoadStep):
             else field.conversion_factor_physcgs
         )
 
-        names: dict[str, str] = {uname: uname for uname in unames}
-        names["a_scale"] = "a"
-        names["h_scale"] = "h"
+        names = {"a_scale": "a", "h_scale": "h"}
 
         unit_str = str(conversion_factor_physcgs.units.get_cgs_equivalent())
 
         if field.phys_CGS_expression is None:
             field.phys_CGS_expression = " ".join(
-                f"{names[term]}^{exponents[term]}" for term in terms
+                (
+                    f"{names.get(term, term)}"
+                    f"{'' if exponents[term] == 1.0 else f'^{exponents[term]:g}'}"
+                )
+                for term in terms
+                if exponents[term] == 0.0
             )
 
             field.phys_CGS_expression += f" [{unit_str}]"
