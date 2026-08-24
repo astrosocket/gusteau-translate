@@ -1,6 +1,7 @@
 from dataclasses import KW_ONLY, dataclass
 from typing import LiteralString
 
+import h5py
 import numpy as np
 
 from ..pipeline import NextStep
@@ -35,6 +36,74 @@ class MathStep(TranslationStep):
         # )
         x = field.value
         field.value = np.asarray(eval(self.equation)).astype(field.dtype)
+        next_step(context)
+
+
+def _load_external_field(
+    external_path: str,
+    external_columns: np.ndarray | None,
+    infile: h5py.File,
+    *,
+    skip_data: bool = False,
+) -> np.ndarray:
+    if "." in external_path:
+        # read as attribute
+        path, name = external_path.split(".")
+        external = infile[path].attrs[name]
+    else:
+        external_ds = infile[external_path]
+        shape = (1 if skip_data else external_ds.shape[0], *external_ds.shape[1:])
+        external = np.empty(shape, dtype=external_ds.dtype)
+        slice_ = np.s_[: shape[0], ...]
+        external_ds.read_direct(external, source_sel=slice_)
+
+    return (
+        external
+        if external_columns is None
+        else np.atleast_2d(external)[:, external_columns]
+    )
+
+
+@dataclass
+class Math2Step(MathStep):
+    """
+    Perform basic mathematical expressions on the field value
+
+    This step uses sympy to evaluate a 2-variable expression, i.e., something
+    like `x**2 * y` or `sin(x) / y`. The external parameter maps to a field
+    (dataset or attribute) in the input file, the external_columns specifies
+    columns to pick out.
+
+    **WARNING**: this uses sympy's `sympify` function which contains a bare
+    `eval` and we perform no sanitization of the inputs. Use at own risk!
+    """
+
+    _: KW_ONLY
+    external: str
+    """The path to the external variable in standard GUSTEAU field notation"""
+    external_columns: np.ndarray | None = None
+    """The column(s) to extract. 
+    For 2D arrays, this is equivalent to y=external[:, external_columns].
+    For 1D arrays, this is equivalent to y=external[external_columns].
+    """
+
+    def __post_init__(self):
+        self.external_columns = (
+            None
+            if self.external_columns is None
+            else np.array(self.external_columns).squeeze()
+        )
+
+    def __call__(self, context: TranslationContext, next_step: NextStep):
+        field = context.field
+        x = field.value
+        y = _load_external_field(
+            self.external,
+            self.external_columns,
+            context.infile,
+            skip_data=context.options.skip_data,
+        )
+        field.value = np.array(eval(self.equation)).astype(field.dtype)
         next_step(context)
 
 
