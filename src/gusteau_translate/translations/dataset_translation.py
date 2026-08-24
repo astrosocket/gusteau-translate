@@ -430,7 +430,7 @@ class DatasetSaveStep(SaveStep):
         )
 
         # add source description attribute
-        context.outfile[field.output_path].attrs["Source_Description"] = (
+        context.outfile[field.output_path].attrs["Source_description"] = (
             field.input_description
         )
         field.value = None

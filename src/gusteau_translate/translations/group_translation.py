@@ -78,7 +78,7 @@ class GroupSaveStep(SaveStep):
         group = context.outfile.require_group(
             field.output_path
         )  # add source description attribute
-        group.attrs["Source_Description"] = field.input_description
+        group.attrs["Source_description"] = field.input_description
         if field.description is not None:
             group.attrs["Description"] = field.description
         if field.tags is not None:
