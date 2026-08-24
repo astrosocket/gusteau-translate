@@ -227,6 +227,8 @@ class AttributeSaveStep(SaveStep):
 @dataclass
 class SaveQuantityStep(TranslationStep):
     _: KW_ONLY
+    # need it before SaveStep because we delete field.value in SaveStep
+    priority: int = SaveStep.priority - 1
     name: str
     """The name of the quantity to store in the pipeline context"""
 
