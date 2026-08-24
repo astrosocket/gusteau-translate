@@ -700,7 +700,8 @@ def _check_tags(
     for tag in tags:
         tagspec = tag_defs.get(tag)
         if tagspec is None:
-            raise ValidationError(f"Unknown tag: {tag}")
+            LOGGER.debug(f"Cannot check unknown tag: {tag}")
+            continue
         includes = tagspec.includes
         for intag, level in includes.items():
             intag = intag.lower()
@@ -748,8 +749,17 @@ class TaggedGroupSpec(GroupSpec):
             f"{prefix}"
             + (f"Validating tags: {tags}" if tags else "No tags to validate")
         )
-        for tag in tags:
-            tag_defs[tag].validate(obj, validation_info=validation_info, prefix=prefix)
+        for tag_str in tags:
+            tag = tag_defs.get(tag_str)
+            if tag is None:
+                LOGGER.warning(f"Unknown tag {tag_str}, skipping!")
+                validation_info["violations"].append(
+                    f"Found unknown tag {tag_str} on {obj.name}"
+                )
+                continue
+            tag_defs[tag_str].validate(
+                obj, validation_info=validation_info, prefix=prefix
+            )
         return True
 
     def validate(
@@ -1231,6 +1241,13 @@ class ParticleGroupSpec(TaggedGroupSpec):
         return True
 
 
+def _log_violations(violations: list[str]):
+    if violations:
+        LOGGER.warning("Encountered non-critical spec violations:")
+        for violation in violations:
+            LOGGER.warning(f" - {violation}")
+
+
 class GUSTEAU:
     required_tlgs: dict[str, GroupSpec]
     optional_tlgs: dict[str, GroupSpec]
@@ -1271,6 +1288,7 @@ class GUSTEAU:
         """
         options = ValidationOptions() if options is None else options
         validation_info: dict[str, Any] = {}
+        validation_info["violations"] = []
         visited_groups: set[str] = set(self.required_tlgs.keys())
         visited_groups.update(self.optional_tlgs)
 
@@ -1328,6 +1346,8 @@ class GUSTEAU:
         self._validate_metadata_attribute(
             h5_file, validation_info=validation_info, options=options
         )
+
+        _log_violations(validation_info["violations"])
 
         return True
 
