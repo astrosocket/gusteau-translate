@@ -56,6 +56,9 @@ nav = [
       "Users-Guide/index.md",
       { "Reference" = [
         "Users-Guide/Reference/index.md",
+        "Users-Guide/Reference/translations.md",
+        "Users-Guide/Reference/steps.md",
+        "Users-Guide/Reference/styles.md"
       ]
       },
   ],
