@@ -123,6 +123,8 @@ style = [{task="format"}, {task="check"}, {task="pylint"}, {task="ymllint"}]
 [tool.pixi.feature.git.dependencies]
 pre-commit = "*"
 
+[tool.pixi.feature.build.dependencies]
+twine = "*"
 
 [tool.pixi.feature.ci.dependencies]
 pytest = "*"
@@ -155,6 +157,7 @@ python = "3.13.*"
 python = "3.14.*"
 
 [tool.pixi.environments]
+build = { features=["build"], solve-group="prod" }
 default = { features = ["style", "git", "ci"], solve-group = "prod" }
 test-py313 = { features = ["ci"], solve-group = "prod-py313" }
 test = { features = ["ci"], solve-group = "prod" }
