@@ -59,6 +59,20 @@ class TranslationContext:
 
 @dataclass
 class TranslationStep[TranslationContext](PipelineStep):
+    """Abstract base class for steps in the translation pipeline
+
+    Attributes
+    ----------
+    priority:
+        Priority of this step in the pipeline.
+        Lower values come first. Default is `1`.
+    write_out:
+        Whether to include this step when writing out a translation
+        Not needed for generic steps, like attribute loading.
+        Default is `True`.
+
+    """
+
     priority: int = 1
     write_out: bool = True
 

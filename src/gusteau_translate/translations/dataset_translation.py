@@ -322,6 +322,14 @@ class ConstantParticleDatasetTranslation(ParticleDatasetTranslation):
 
 @dataclass
 class DatasetLoadStep(LoadStep):
+    """Load the dataset from field.input_path
+
+    Note
+    ----
+    Will set the equivalent field attributes (e.g. `field.chunked`) from the
+    dataset
+    """
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         if not isinstance(field, DatasetTranslation):
@@ -408,6 +416,14 @@ class DatasetLoadStep(LoadStep):
 
 @dataclass
 class DatasetSaveStep(SaveStep):
+    """Save the dataset to field.output_path
+
+    Note
+    ----
+    Will use the appropriate field attributes (e.g. `field.chunks`) when creating
+    the dataset.
+    """
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         if not isinstance(field, DatasetTranslation):

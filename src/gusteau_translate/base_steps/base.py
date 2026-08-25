@@ -18,18 +18,24 @@ LOGGER = logging.getLogger(LOGGER_NAME)
 
 @dataclass
 class LoadStep(TranslationStep):
+    """Abstract step to load something"""
+
     priority: int = -100
     write_out: bool = False
 
 
 @dataclass
 class SaveStep(TranslationStep):
+    """Abstract step to save something"""
+
     priority: int = 100
     write_out: bool = False
 
 
 @dataclass
 class SkipStep(TranslationStep):
+    """Step to skip remainder of pipeline"""
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         LOGGER.debug(
             f"Skipping remainder of pipeline for field {context.field.input_path}"
@@ -39,6 +45,16 @@ class SkipStep(TranslationStep):
 
 @dataclass
 class LinkStep(TranslationStep):
+    """Soft link this field to a path
+
+    Essentially, `path` will be linked to `field.output_path`.
+
+    Attributes
+    ----------
+    path: str
+        Link name of the soft link
+    """
+
     priority: int = 200
     _: KW_ONLY
     path: str
@@ -52,13 +68,17 @@ class LinkStep(TranslationStep):
 
 @dataclass
 class ConvertDateStep(TranslationStep):
-    """Convert date/timestamp field values to ISO8601 using time/datetime"""
+    """Convert date/timestamp field values to ISO8601 using time/datetime
+
+    Attributes
+    ----------
+    format: str
+        Format string to pass to time.strptime, optional.
+        If None, will attempt to parse the field value as ISO8601
+    """
 
     _: KW_ONLY
     format: str | None = None
-    """Format string to pass to time.strptime, optional
-    If None, will attempt to parse the field value as ISO8601
-    """
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field

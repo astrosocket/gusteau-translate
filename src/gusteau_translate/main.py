@@ -26,7 +26,13 @@ _ALL_PARTICLE_GROUPS = "*"
 
 
 def parse_arguments(argv=None) -> argparse.Namespace:
-    """Parse CLI arguments using argparse"""
+    """Parse CLI arguments using argparse
+
+    ```bash exec="on" result="bash"
+    alchemize --help
+    ```
+
+    """
     if argv is None:
         # need to skip caller or it's picked up as the first positional argument
         argv = sys.argv[1:]
@@ -215,6 +221,27 @@ def get_translation(
 
 
 def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
+    """Translate the provided snapshot
+
+    Parameters
+    ----------
+    snapshot:
+        The snapshot to translate
+
+    args:
+        Command-line arguments for the process. See [parse_arguments][parse_arguments]
+
+    Returns
+    -------
+    :
+        If the snapshot was translated without errors
+
+    Raises
+    ------
+    TranslationError
+        If an error occured during the translation process
+
+    """
     if not hasattr(args, "output"):
         sys.exit("the following arguments are required: output-snapshot")
     options = TranslationOptions(
@@ -234,6 +261,23 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
 
 
 def validate(snapshot: Snapshot, args: argparse.Namespace) -> bool:
+    """Validate the provided snapshot
+
+    Parameters
+    ----------
+    snapshot:
+        The snapshot to validate
+
+    args:
+        Command-line arguments for the process. See [parse_arguments][parse_arguments]
+
+    Returns
+    -------
+    :
+        `True` if the snapshot correctly conforms to the GUSTEAU specification
+
+
+    """
     options = ValidationOptions(skip_data=args.skip_data)
     LOGGER.info(f"Loaded validation options: {options}")
 
@@ -246,7 +290,22 @@ def translate_and_validate(snapshot: Snapshot, args: argparse.Namespace) -> bool
     return validate(out_snapshot, args)
 
 
-def cli(argv=None) -> bool:
+def cli(argv: list[str] | None = None) -> bool:
+    """Run the command-line interface
+
+    See [the User's Guide](..#command-line-interface) for more details
+
+    Parameters
+    ----------
+    argv:
+        List of command line arguments in [sys.argv][sys.argv] format.
+
+    Returns
+    -------
+    :
+        `True` if translation and/or validation are successful
+
+    """
     file_handler = logging.FileHandler(filename="alchemize.log", mode="w")
     stdout_handler = logging.StreamHandler(sys.stdout)
     logging.basicConfig(handlers=[file_handler, stdout_handler])

@@ -179,6 +179,14 @@ def process_attribute(
 
 @dataclass
 class AttributeLoadStep(LoadStep):
+    """Load the value from field.input_path
+
+    Note
+    ----
+    Will call [process_attribute][process_attribute] on the attribute as part
+        of the loading process.
+    """
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         if not isinstance(field, AttributeTranslation):
@@ -207,6 +215,8 @@ class AttributeLoadStep(LoadStep):
 
 @dataclass
 class AttributeSaveStep(SaveStep):
+    """Save the value to field.output_path"""
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         outpath = field.output_path.split(".")
@@ -226,11 +236,18 @@ class AttributeSaveStep(SaveStep):
 
 @dataclass
 class SaveQuantityStep(TranslationStep):
+    """Save the attribute value to a named quantity
+
+    Attributes
+    ----------
+    name: str
+        The name of the quantity to store in the pipeline context
+    """
+
     _: KW_ONLY
     # need it before SaveStep because we delete field.value in SaveStep
     priority: int = SaveStep.priority - 1
     name: str
-    """The name of the quantity to store in the pipeline context"""
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
@@ -242,11 +259,17 @@ class SaveQuantityStep(TranslationStep):
 
 @dataclass
 class SnapshotAttributeLoadStep(LoadStep):
+    """Load attribute value from snapshot file information
+
+    Attributes
+    ----------
+    attribute: Literal["timestamp"] | str
+        Name of the file attribute to use (obtained through Path.stat).
+        Note that `"timestamp"` will return an ISO8601 formatted version of `st_mtime`
+    """
+
     _: KW_ONLY
     attribute: Literal["timestamp"] | str
-    """Name of the file attribute to use (obtained through Path.stat). 
-    Note that timestamp will return an ISO8601 formatted version of st_mtime
-    """
 
     def _load_file_attributes(self, file_path) -> str:
         stat_result = Path(file_path).stat()

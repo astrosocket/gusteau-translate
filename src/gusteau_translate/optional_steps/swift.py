@@ -20,19 +20,21 @@ class LoadSwiftLikeUnitsStep(TranslationStep):
     """
     Load units from a Swift-like setup
 
-    A Swift-like setup has the following attributes:
-        - Conversion factor to CGS (not including cosmological corrections)
-        - Conversion factor to physical CGS (including cosmological corrections)
-        - Expression for physical CGS units
-        - U_I exponent
-        - U_L exponent
-        - U_M exponent
-        - U_T exponent
-        - U_t exponent
-        - a-scale exponent
-        - h-scale exponent
+    A Swift-like setup has the following attributes on every particle dataset:
+
+      - `Conversion factor to CGS (not including cosmological corrections)`
+      - `Conversion factor to physical CGS (including cosmological corrections)`
+      - `Expression for physical CGS units`
+      - `U_I exponent`
+      - `U_L exponent`
+      - `U_M exponent`
+      - `U_T exponent`
+      - `U_t exponent`
+      - `a-scale exponent`
+      - `h-scale exponent`
+
     While we _technically_ only care about the exponent terms, the other terms
-    are just the equivalent name mapping, so we might as well use them as is
+    are just the equivalent name mapping, so we might as well use them as is.
     """
 
     priority: int = LoadStep.priority + 1

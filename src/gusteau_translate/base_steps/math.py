@@ -16,16 +16,21 @@ class MathStep(TranslationStep):
     """
     Perform basic mathematical expressions on the field value
 
-    This step uses sympy to evaluate a 1-variable expression, i.e., something
+    This step uses `eval` to evaluate a 1-variable expression, i.e., something
     like `x**2` or `sin(x)`
 
-    **WARNING**: this uses sympy's `sympify` function which contains a bare
-    `eval` and we perform no sanitization of the inputs. Use at own risk!
+    !!! warning
+        We perform no sanitization of the inputs. Use at own risk!
+
+    Attributes
+    ----------
+    equation: LiteralString
+        A string literal defining the mathematical expression.
+        Can use any numpy expression and the value `x`
     """
 
     _: KW_ONLY
     equation: LiteralString
-    """A string literal defining the mathematical expression"""
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
@@ -69,23 +74,27 @@ class Math2Step(MathStep):
     """
     Perform basic mathematical expressions on the field value
 
-    This step uses sympy to evaluate a 2-variable expression, i.e., something
+    This step uses `eval` to evaluate a 2-variable expression, i.e., something
     like `x**2 * y` or `sin(x) / y`. The external parameter maps to a field
     (dataset or attribute) in the input file, the external_columns specifies
     columns to pick out.
 
-    **WARNING**: this uses sympy's `sympify` function which contains a bare
-    `eval` and we perform no sanitization of the inputs. Use at own risk!
+    !!! warning
+        We perform no sanitization of the inputs. Use at own risk!
+
+    Attributes
+    ----------
+    external: str
+        The path to the external variable (`y`) in standard GUSTEAU field notation
+    external_columns: NDArray | None, optional
+        The column(s) to extract.
+        For 2D arrays, this is equivalent to `y=external[:, external_columns]`.
+        For 1D arrays, this is equivalent to `y=external[external_columns]`.
     """
 
     _: KW_ONLY
     external: str
-    """The path to the external variable in standard GUSTEAU field notation"""
     external_columns: np.ndarray | None = None
-    """The column(s) to extract. 
-    For 2D arrays, this is equivalent to y=external[:, external_columns].
-    For 1D arrays, this is equivalent to y=external[external_columns].
-    """
 
     def __post_init__(self):
         self.external_columns = (
@@ -111,18 +120,22 @@ class Math2Step(MathStep):
 class ReorderColumnStep(TranslationStep):
     """
     Reorder columns in a 1 or 2D array
+
+    Attributes
+    ----------
+    new_width: int
+        New length(width) in 1(2)D array
+    col_indices: list[int]
+        Column index in original array to be used for this column.
+        Use -1 to fill with the fill_value
+    fill_value: number | str
+        Fill value to use for the unmapped columns
     """
 
     _: KW_ONLY
     new_width: int
-    """New length(width) in 1(2)D array"""
     col_indices: list[int]
-    """
-    Column index in original array to be used for this column.
-    Use -1 to fill with the fill_value
-    """
-    fill_value = 0
-    """Fill value to use for unmapped columns"""
+    fill_value: float | int | str = 0
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field

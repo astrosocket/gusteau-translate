@@ -53,6 +53,8 @@ class CreateGroupTranslation(GroupTranslation):
 
 @dataclass
 class GroupLoadStep(LoadStep):
+    """'Load' the group at field.input_path"""
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = cast(GroupTranslation, context.field)
         if field.input_path not in context.infile:
@@ -70,6 +72,8 @@ class GroupLoadStep(LoadStep):
 
 @dataclass
 class GroupSaveStep(SaveStep):
+    """Create the group at field.output_path"""
+
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = cast(GroupTranslation, context.field)
         LOGGER.debug(f"Saving group {field.output_path}")
@@ -88,6 +92,8 @@ class GroupSaveStep(SaveStep):
 
 @dataclass
 class ProcessGroupChildrenStep(TranslationStep):
+    """Recursively process children to update paths"""
+
     priority: int = SaveStep.priority + 50
     write_out: bool = False
 
