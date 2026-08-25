@@ -29,7 +29,6 @@ not supported, and at least some features are >Python 3.13.
 - `swiftsimio` - required for cosmological unit conversion
 - `tomlkit` - required for reading toml-based style files
 - `ruamel-yaml` - required for reading yaml-based style files
-- `sympy` - required for algebraic translations (also swiftsimio dependency)
 - `pydantic` - required for validating translations
 - `packingcubes` - required for sorting the data and generating the packingcubes structure.
   Note that `packingcubes` is lazily imported in python 3.15+, so while it is not yet an optional package, it will be in the future.

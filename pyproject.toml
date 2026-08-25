@@ -14,7 +14,6 @@ dependencies = [
     "h5py", 
     "tomlkit>=0.15.0,<0.16", 
     "ruamel-yaml>=0.19.1,<0.20",
-    "sympy>=1.14.0,<2",
     "packingcubes>=0.6.6,<0.7",
     "pydantic>=2.13.4,<3",
 ]
