@@ -38,7 +38,7 @@ def parse_arguments(argv=None) -> argparse.Namespace:
         argv = sys.argv[1:]
 
     description = """
-    Translate an HDF5 file into a GUSTEAU-type snapshot
+    Transform an HDF5 file into a GUSTEAU-type snapshot
     """
 
     parser = argparse.ArgumentParser(
