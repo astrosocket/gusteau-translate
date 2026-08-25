@@ -63,6 +63,11 @@ The contribution to the final snapshot size should be pretty minimal though; an 
 The current available styles are
 
 - `swift-eagle` - for converting [SWIFT](https://swift.strw.leidenuniv.nl/)-style snapshots
+- `illustrisTNG` - for converting [IllustrisTNG](www.tng-project.org/)-style snapshots
+
+> [!NOTE]
+> Multipart snapshots (i.e. where the snapshot is spread across multiple files, like snapshot_001.0.hdf5, snapshot_001.1.hdf5, etc) are not yet supported.
+> This is a high-priority feature and is expected soon.
 
 This style was built off of the snapshots from the EAGLE simulation as found at [CAMELS](https://camels.readthedocs.io) and so is based on SWIFT v1.0.0
 
