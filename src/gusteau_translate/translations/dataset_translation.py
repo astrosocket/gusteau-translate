@@ -490,7 +490,10 @@ class MakeParticleAttributesStep(LoadStep):
             context.quantities.get("registry", UnitRegistry(unit_system="cgs")),
         )
 
-        conversion_factor_cgs = unyt_quantity(1, "dimensionless", registry=registry)
+        normalized_coeff = getattr(field, "normalized_coeff", 1)
+        conversion_factor_cgs = unyt_quantity(
+            normalized_coeff, "dimensionless", registry=registry
+        )
         for uname in unames:
             conversion_factor_cgs *= (
                 unyt_quantity(1, units=uname, registry=registry) ** exponents[uname]
@@ -528,7 +531,7 @@ class MakeParticleAttributesStep(LoadStep):
                     f"{'' if exponents[term] == 1.0 else f'^{exponents[term]:g}'}"
                 )
                 for term in terms
-                if exponents[term] == 0.0
+                if exponents[term] != 0.0
             )
 
             field.phys_CGS_expression += f" [{unit_str}]"

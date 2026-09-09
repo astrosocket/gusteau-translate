@@ -41,9 +41,12 @@ class ParseUnitsStep(TranslationStep):
 
         test_quantity = unyt_quantity(1, units, registry=registry)
 
-        powers_dict = test_quantity.in_base(
-            "snapshot"
-        ).units.dimensions.as_powers_dict()
+        normalized = test_quantity.in_base("snapshot")
+
+        if not np.allclose(normalized.v, 1.0, rtol=0.01):
+            field.normalized_coeff = normalized.v  # ty: ignore[unresolved-attribute]
+
+        powers_dict = normalized.units.dimensions.as_powers_dict()
 
         terms = {
             "mass": "U_M",
