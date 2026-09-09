@@ -23,9 +23,16 @@ LOGGER = logging.getLogger(LOGGER_NAME)
 class GroupTranslation(FieldTranslation):
     _: KW_ONLY
     has_particles: bool = False
-    description: str | None = None
-    tags: list[str] | None = None
     """Flag denoting whether any datasets under this group are particle datasets"""
+    description: str | None = None
+    """Description of the fields contained in this group.
+    Must be provided if has_particles is True
+    """
+    tags: list[str] | None = None
+    """
+    List of tags on this group. Must be provided (but can be empty) if 
+    has_particles is True
+    """
 
     def __post_init__(self):
         self.pipeline.append(GroupSaveStep())
