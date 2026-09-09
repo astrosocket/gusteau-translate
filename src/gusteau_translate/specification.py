@@ -202,7 +202,7 @@ def visit_all(
         for o in group.values():
             heappush(next_objs, visit_obj(source_path=o.name, source=o))
         if include_attributes:
-            for name in group.attrs.items():
+            for name in group.attrs:
                 attr_name = f"{group.name}.{name}"
                 heappush(
                     next_objs, visit_obj(source_path=attr_name, source=group.attrs)
