@@ -10,6 +10,7 @@ GUSTEAU:
     # Steps to add to every translation that has the listed (super)class
     ParticleDatasetTranslation:
       - ParseUnitsStep
+      - HandleIllustrisUnitsStep
 
   pipeline_path_additions:
     # Steps to add to every translation whose **output** path matches

@@ -1,3 +1,4 @@
+from .illustris import HandleIllustrisUnitsStep as HandleIllustrisUnitsStep
 from .packcubes import (
     PackCubesStep as PackCubesStep,
 )
@@ -8,6 +9,7 @@ from .swift import LoadSwiftLikeUnitsStep as LoadSwiftLikeUnitsStep
 from .units import ParseUnitsStep as ParseUnitsStep
 
 __all__ = [
+    "HandleIllustrisUnitsStep",
     "LoadSwiftLikeUnitsStep",
     "PackCubesStep",
     "ParseUnitsStep",
