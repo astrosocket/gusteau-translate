@@ -1,5 +1,5 @@
 # Translation style for the EAGLE project snapshots found on CAMELS
-# Version: v0.2.0
+# Version: v0.3.0
 
 # Options are specified in the GUSTEAU group
 # This section should **not** be read as part of the specification
@@ -375,7 +375,6 @@ PartType0:
     - StellarWind
     - Group
     - Massive
-    - Metallic
     - Potential
     - Merge-split
     - Thermal
@@ -399,30 +398,13 @@ PartType0:
       description: "Quantities smoothed over the hydrodynamics cell"
       # Can't include Hydrogen and Helium tags because not all species are
       # present
-      tags: ["MassFraction", "Metallic", "StellarWind"]
+      tags: ["MassFraction", "StellarWind"]
       type: CreateGroupTranslation
       children:
         MassFractions:
           tags: []
           description: "Mass fraction-based chemical abundances"
           type: CreateGroupTranslation
-          children:
-            Hydrogen:
-              tags: []
-              description: "Hydrogen chemical quantities"
-              type: CreateGroupTranslation
-            Helium:
-              tags: []
-              description: "Helium chemical quantities"
-              type: CreateGroupTranslation
-            Metals:
-              tags: []
-              description: "Metallic chemical quantities"
-              type: CreateGroupTranslation
-              children:
-                Metal_only_denominator:
-                  constant: true
-                  type: ConstantAttributeTranslation
         StellarWind:
           tags: []
           description: >
@@ -439,20 +421,20 @@ PartType0:
       description: "Number density-based chemical abundances"
       tags: []
       type: CreateGroupTranslation
-      children:
-        Hydrogen:
-          description: "Hydrogen chemical quantities"
-          tags: []
-          type: CreateGroupTranslation
     Abundances:
       type: CreateGroupTranslation
       description: "Normalized number fraction-based chemical abundances"
       tags: []
       children:
         Hydrogen:
-          description: "Hydrogen chemical quantities"
-          tags: []
           type: CreateGroupTranslation
+          description: "Hydrogen subspecies tracking"
+          tags: []
+    MassFractions:
+      description: >
+        Mass-fraction-based chemical abundances.
+      tags: []
+      type: CreateGroupTranslation
     Subgrid:
       description: >
         This subgroup is the primary location to store miscellaneous subgrid
@@ -523,11 +505,8 @@ PartType0:
       output_path: Feedback/AGN/Densities_before_last_event
       type: ParticleDatasetTranslation
     ElectronNumberDensities:
-      output_path: NumberDensities/Hydrogen/E
+      output_path: NumberDensities/Electrons
       type: ParticleDatasetTranslation
-      pipeline:
-        LinkStep:
-          path: /Gas/NumberDensities/Hydrogen/Electron
     EnergiesReceivedFromAGNFeedback:
       output_path: Feedback/AGN/ReceivedEnergies
       type: ParticleDatasetTranslation
@@ -569,9 +548,7 @@ PartType0:
       output_path: Subgrid/MaximalTemperatures
       type: ParticleDatasetTranslation
     MetalMassFractions:
-      # Putting this in subgrid since we don't have any of the other components
-      # for the Metallic tag
-      output_path: Subgrid/MetalMassFractions
+      output_path: MassFractions/Metals
       type: ParticleDatasetTranslation
     MetalMassFractionsFromAGB:
       output_path: StellarWind/AGB/MetalMassFractions
@@ -611,91 +588,178 @@ Gas:
   Smoothed:
     MassFractions:
       Hydrogen:
-        H:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 0 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Hydrogen/Hydrogen
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 0 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
       Helium:
-        He:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 1 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Helium/Helium
-      Metals:
-        C:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 2 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Carbon
-        N:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 3 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Nitrogen
-        O:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 4 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Oxygen
-        Ne:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 5 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Neon
-        Mg:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 6 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Magnesium
-        Si:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 7 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Silicon
-        Fe:
-          input_path: /PartType0/SmoothedElementMassFractions
-          columns: 8 # 0-based indexing
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Gas/Smoothed/MassFractions/Metals/Iron
-        TotalMasses:
-          input_path: /PartType0/SmoothedMetalMassFractions
-          type: ParticleDatasetTranslation
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 1 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Carbon:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 2 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Nitrogen:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 3 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Oxygen:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 4 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Neon:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 5 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Magnesium:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 6 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Silicon:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 7 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      Iron:
+        input_path: /PartType0/SmoothedElementMassFractions
+        columns: 8 # 0-based indexing
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+            type: ConstantAttributeTranslation
+      TotalMasses:
+        input_path: /PartType0/SmoothedMetalMassFractions
+        type: ParticleDatasetTranslation
   Abundances:
     Hydrogen:
-      H:
+      i:
         input_path: /PartType0/SpeciesFractions
         columns: 0 # 0-based indexing
         type: ParticleDatasetTranslation
         pipeline:
           LinkStep:
             path: /Gas/Abundances/Hydrogen/Hydrogen
-      Hp:
+      ii:
         input_path: /PartType0/SpeciesFractions
         columns: 1 # 0-based indexing
         type: ParticleDatasetTranslation
         pipeline:
           LinkStep:
             path: /Gas/Abundances/Hydrogen/Proton
-      H2:
+      two:
         input_path: /PartType0/SpeciesFractions
         columns: 2 # 0-based indexing
         type: ParticleDatasetTranslation
@@ -837,30 +901,13 @@ PartType4:
         Smoothed:
           description: >
             Quantities smoothed over the hydrodynamics cell
-          tags: ["MassFraction", "Metallic", "StellarWind"]
+          tags: ["MassFraction", "StellarWind"]
           type: CreateGroupTranslation
           children:
             MassFractions:
               description: "Mass fraction-based chemical abundances"
               tags: []
               type: CreateGroupTranslation
-              children:
-                Hydrogen:
-                  description: "Hydrogen chemical quantities"
-                  tags: []
-                  type: CreateGroupTranslation
-                Helium:
-                  description: "Helium chemical quantities"
-                  tags: []
-                  type: CreateGroupTranslation
-                Metals:
-                  description: "Metallic chemical quantities"
-                  tags: []
-                  type: CreateGroupTranslation
-                  children:
-                    Metal_only_denominator:
-                      constant: true
-                      type: ConstantAttributeTranslation
             StellarWind:
               description: >
                 This subgroup is the primary location to store stellar
@@ -979,74 +1026,161 @@ Stars:
     Smoothed:
       MassFractions:
         Hydrogen:
-          H:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 0 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Hydrogen/Hydrogen
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 0 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
         Helium:
-          He:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 1 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Helium/Helium
-        Metals:
-          C:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 2 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Carbon
-          N:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 3 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Nitrogen
-          O:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 4 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Oxygen
-          Ne:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 5 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Neon
-          Mg:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 6 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Magnesium
-          Si:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 7 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Silicon
-          Fe:
-            input_path: /PartType4/SmoothedElementMassFractions
-            columns: 8 # 0-based indexing
-            type: ParticleDatasetTranslation
-            pipeline:
-              LinkStep:
-                path: /Stars/FromParent_Gas/Smoothed/MassFractions/Metals/Iron
-          TotalMasses:
-            input_path: /PartType4/SmoothedMetalMassFractions
-            type: ParticleDatasetTranslation
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 1 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Carbon:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 2 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Nitrogen:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 3 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Oxygen:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 4 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Neon:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 5 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Magnesium:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 6 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Silicon:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 7 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        Iron:
+          input_path: /PartType4/SmoothedElementMassFractions
+          columns: 8 # 0-based indexing
+          type: ParticleDatasetTranslation
+          children:
+            Denominator_species:
+              constant:
+                - Hydrogen
+                - Helium
+                - Carbon
+                - Nitrogen
+                - Oxygen
+                - Neon
+                - Magnesium
+                - Silicon
+                - Iron
+              type: ConstantAttributeTranslation
+        TotalMasses:
+          input_path: /PartType4/SmoothedMetalMassFractions
+          type: ParticleDatasetTranslation
   Subgrid:
     Luminosities:
       u_band:

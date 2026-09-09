@@ -1,7 +1,7 @@
 # Translation style for the IllustrisTNG project snapshots
 # This should work for both the CAMELs snapshots and the regular snapshots,
 # assuming they are combined into a single file using virtual datasets.
-# Version: v0.1.0
+# Version: v0.2.0
 
 # Options are specified in the GUSTEAU group
 # This section should **not** be read as part of the specification
@@ -247,7 +247,7 @@ PartType0:
   has_particles: true
   description: "Baryonic gas particles with chemistry and hydrodynamics"
   tags:
-    # - Hydrogen # Missing molecular hydrogen, so the tag doesn't apply
+    - Hydrogen
     - Abundance
     - MassFraction
     - Feedback
@@ -255,10 +255,8 @@ PartType0:
     - Subgrid
     - Particles
     - Hydro
-    - Helium
     - Magnetic
     - Massive
-    - Metallic
     - Potential
     - Subfind
   pipeline:
@@ -277,26 +275,13 @@ PartType0:
       type: CreateGroupTranslation
       children:
         Hydrogen:
-          description: "Hydrogen chemical quantities"
-          tags: []
-          type: CreateGroupTranslation
-        Helium:
-          description: "Helium chemical quantities"
-          tags: []
-          type: CreateGroupTranslation
-        Metals:
-          description: "Metallic chemical quantities"
+          description: "Hydrogen subspecies tracking"
           tags: []
           type: CreateGroupTranslation
     Abundances:
       type: CreateGroupTranslation
       description: "Normalized number fraction-based chemical abundances"
       tags: []
-      children:
-        Hydrogen:
-          description: "Hydrogen chemical quantities"
-          tags: []
-          type: CreateGroupTranslation
     Subgrid:
       description: >
         This subgroup is the primary location to store miscellaneous subgrid
@@ -356,6 +341,15 @@ PartType0:
       type: CreateGroupTranslation
 
     # Datasets
+    CenterOfMass:
+      description: >
+        Spatial position of the center of mass, which in general differs from
+        the geometrical center of the Voronoi cell (the offset should be small).
+        Comoving coordinate.
+      units: kpc
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
     Coordinates:
       description: >
         Spatial position within the periodic simulation domain of BoxSize.
@@ -377,8 +371,14 @@ PartType0:
         Fractional electron number density with respect to the total hydrogen
         number density, so $n_e=\text{ElectronAbundance} ∗ n_H$ where
         $n_H=X_H∗ρ/m_p$. Use with caution for star-forming gas.
-      output_path: Abundances/Hydrogen/E
+      output_path: Abundances/Electrons
       type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+          type: ConstantAttributeTranslation
     EnergyDissipation:
       description: >
         Shock finder output: the dissipated energy rate (amount of kinetic
@@ -569,7 +569,7 @@ Gas:
         type: ParticleDatasetTranslation
   MassFractions:
     Hydrogen:
-      H:
+      i:
         # GFM_Metals[:,0] is the total n_H. n_HI = NeutralHydrogenAbundance * n_H
         input_path: /PartType0/NeutralHydrogenAbundance
         description: >
@@ -582,9 +582,22 @@ Gas:
             equation: "x*y"
             external: /PartType0/GFM_Metals
             external_columns: [0]
-          LinkStep:
-            path: /Gas/MassFractions/Hydrogen/Hydrogen
-      Hp:
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen/i
+              - Hydrogen/ii
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      ii:
         # GFM_Metals[:,0] is the total n_H.
         # n_HII = (1-NeutralHydrogenAbundance) * n_H
         input_path: /PartType0/NeutralHydrogenAbundance
@@ -598,96 +611,214 @@ Gas:
             equation: "(1-x)*y"
             external: /PartType0/GFM_Metals
             external_columns: [0]
-          LinkStep:
-            path: /Gas/MassFractions/Hydrogen/Proton
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen/i
+              - Hydrogen/ii
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
       # Note: missing H2
     Helium:
-      He:
-        input_path: /PartType0/GFM_Metals
-        columns: 1 # 0-based indexing
-        description: >
-          Mass fraction of neutral helium. Use with caution for
-          star-forming gas, as the calculation is based on the 'effective'
-          temperature of the equation of state, which is not a physical
-          temperature.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Helium/Helium
-      # Note: missing HeII, HeIII
-    Metals:
-      C:
-        input_path: /PartType0/GFM_Metals
-        columns: 2 # 0-based indexing
-        description: >
-          Mass fraction of carbon.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Carbon
-      N:
-        input_path: /PartType0/GFM_Metals
-        columns: 3 # 0-based indexing
-        description: >
-          Mass fraction of nitrogen.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Nitrogen
-      O:
-        input_path: /PartType0/GFM_Metals
-        columns: 4 # 0-based indexing
-        description: >
-          Mass fraction of oxygen.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Oxygen
-      Ne:
-        input_path: /PartType0/GFM_Metals
-        columns: 5 # 0-based indexing
-        description: >
-          Mass fraction of neon.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Neon
-      Mg:
-        input_path: /PartType0/GFM_Metals
-        columns: 6 # 0-based indexing
-        description: >
-          Mass fraction of magnesium.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Magnesium
-      Si:
-        input_path: /PartType0/GFM_Metals
-        columns: 7 # 0-based indexing
-        description: >
-          Mass fraction of silicon.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Silicon
-      Fe:
-        input_path: /PartType0/GFM_Metals
-        columns: 8 # 0-based indexing
-        description: >
-          Mass fraction of iron.
-        type: ParticleDatasetTranslation
-        pipeline:
-          LinkStep:
-            path: /Gas/MassFractions/Metals/Iron
-      Untracked:
-        input_path: /PartType0/GFM_Metals
-        columns: 9 # 0-based indexing
-        description: >
-          Mass fraction of of all other untracked metals.
-        type: ParticleDatasetTranslation
-      Metal_only_denominator:
-        constant: False
-        type: ConstantAttributeTranslation
+      input_path: /PartType0/GFM_Metals
+      columns: 1 # 0-based indexing
+      description: >
+        Mass fraction of neutral helium. Use with caution for
+        star-forming gas, as the calculation is based on the 'effective'
+        temperature of the equation of state, which is not a physical
+        temperature.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Carbon:
+      input_path: /PartType0/GFM_Metals
+      columns: 2 # 0-based indexing
+      description: >
+        Mass fraction of carbon.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Nitrogen:
+      input_path: /PartType0/GFM_Metals
+      columns: 3 # 0-based indexing
+      description: >
+        Mass fraction of nitrogen.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Oxygen:
+      input_path: /PartType0/GFM_Metals
+      columns: 4 # 0-based indexing
+      description: >
+        Mass fraction of oxygen.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Neon:
+      input_path: /PartType0/GFM_Metals
+      columns: 5 # 0-based indexing
+      description: >
+        Mass fraction of neon.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Magnesium:
+      input_path: /PartType0/GFM_Metals
+      columns: 6 # 0-based indexing
+      description: >
+        Mass fraction of magnesium.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Silicon:
+      input_path: /PartType0/GFM_Metals
+      columns: 7 # 0-based indexing
+      description: >
+        Mass fraction of silicon.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Iron:
+      input_path: /PartType0/GFM_Metals
+      columns: 8 # 0-based indexing
+      description: >
+        Mass fraction of iron.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
+    Untracked:
+      input_path: /PartType0/GFM_Metals
+      columns: 9 # 0-based indexing
+      description: >
+        Mass fraction of of all other untracked metals.
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species:
+          constant:
+            - Hydrogen/i
+            - Hydrogen/ii
+            - Helium
+            - Carbon
+            - Nitrogen
+            - Oxygen
+            - Neon
+            - Magnesium
+            - Silicon
+            - Iron
+            - Untracked
+          type: ConstantAttributeTranslation
   StellarWind:
     SNIa:
       MetalMassFractions:
@@ -852,6 +983,14 @@ ColdDarkMatter:
       constant: [1]
       type: ConstantAttributeTranslation
 
+PartType3:
+  # Note: PartType3 is essentially **not** a particle type!
+  output_path: /Tracers
+  type: GroupTranslation
+  description: "Tracer particles datasets (not particles)"
+  has_particles: false
+  # Since this is not actually a particle type, we can let the auto discovery
+  # grab everything
 
 PartType4:
   output_path: /Stars
@@ -898,7 +1037,7 @@ PartType4:
       type: CreateGroupTranslation
       description: >
         Fields retained from the parent gas particle that are no longer updated
-      tags: ["MassFraction", "Metallic", "Feedback", "StellarWind", "Subgrid"]
+      tags: ["MassFraction", "Feedback", "StellarWind", "Subgrid"]
       children:
         Feedback:
           description: >
@@ -938,23 +1077,6 @@ PartType4:
           description: "Mass fraction-based chemical abundances"
           tags: []
           type: CreateGroupTranslation
-          children:
-            Hydrogen:
-              description: "Hydrogen chemical quantities"
-              tags: []
-              type: CreateGroupTranslation
-            Helium:
-              description: "Helium chemical quantities"
-              tags: []
-              type: CreateGroupTranslation
-            Metals:
-              description: "Metallic chemical quantities"
-              tags: []
-              type: CreateGroupTranslation
-              children:
-                Metal_only_denominator:
-                  constant: False
-                  type: ConstantAttributeTranslation
         Subgrid:
           description: >
             This subgroup is the primary location to store miscellaneous subgrid
@@ -1114,107 +1236,213 @@ Stars:
           type: ParticleDatasetTranslation
     MassFractions:
       Hydrogen:
-        H_total:
-          # GFM_Metals[:,0] is the total n_H.
-          # For star particles, we do not have the neutral hydrogen fraction, so
-          # cannot obtain HI and HII
-          input_path: /PartType4/GFM_Metals
-          columns: 0 # 0-based indexing
-          description: >
-            Mass fraction of all hydrogen. Use with caution for star-forming
-            gas, as the calculation is based on the 'effective' temperature of the
-            equation of state, which is not a physical temperature.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Hydrogen/TotalHydrogen
+        # GFM_Metals[:,0] is the total n_H.
+        # For star particles, we do not have the neutral hydrogen fraction, so
+        # cannot obtain HI and HII
+        input_path: /PartType4/GFM_Metals
+        columns: 0 # 0-based indexing
+        description: >
+          Mass fraction of all hydrogen. Use with caution for star-forming
+          gas, as the calculation is based on the 'effective' temperature of the
+          equation of state, which is not a physical temperature.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
       Helium:
-        He:
-          input_path: /PartType4/GFM_Metals
-          columns: 1 # 0-based indexing
-          description: >
-            Mass fraction of neutral helium. Use with caution for
-            star-forming gas, as the calculation is based on the 'effective'
-            temperature of the equation of state, which is not a physical
-            temperature.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Helium/Helium
-        # Note: missing HeII, HeIII
-      Metals:
-        C:
-          input_path: /PartType4/GFM_Metals
-          columns: 2 # 0-based indexing
-          description: >
-            Mass fraction of carbon.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Carbon
-        N:
-          input_path: /PartType4/GFM_Metals
-          columns: 3 # 0-based indexing
-          description: >
-            Mass fraction of nitrogen.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Nitrogen
-        O:
-          input_path: /PartType4/GFM_Metals
-          columns: 4 # 0-based indexing
-          description: >
-            Mass fraction of oxygen.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Oxygen
-        Ne:
-          input_path: /PartType4/GFM_Metals
-          columns: 5 # 0-based indexing
-          description: >
-            Mass fraction of neon.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Neon
-        Mg:
-          input_path: /PartType4/GFM_Metals
-          columns: 6 # 0-based indexing
-          description: >
-            Mass fraction of magnesium.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Magnesium
-        Si:
-          input_path: /PartType4/GFM_Metals
-          columns: 7 # 0-based indexing
-          description: >
-            Mass fraction of silicon.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Silicon
-        Fe:
-          input_path: /PartType4/GFM_Metals
-          columns: 8 # 0-based indexing
-          description: >
-            Mass fraction of iron.
-          type: ParticleDatasetTranslation
-          pipeline:
-            LinkStep:
-              path: /Stars/FromParent_Gas/MassFractions/Metals/Iron
-        Untracked:
-          input_path: /PartType4/GFM_Metals
-          columns: 9 # 0-based indexing
-          description: >
-            Mass fraction of of all other untracked metals.
-          type: ParticleDatasetTranslation
-        Metal_only_denominator:
-          constant: False
-          type: ConstantAttributeTranslation
+        input_path: /PartType4/GFM_Metals
+        columns: 1 # 0-based indexing
+        description: >
+          Mass fraction of neutral helium. Use with caution for
+          star-forming gas, as the calculation is based on the 'effective'
+          temperature of the equation of state, which is not a physical
+          temperature.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Carbon:
+        input_path: /PartType4/GFM_Metals
+        columns: 2 # 0-based indexing
+        description: >
+          Mass fraction of carbon.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Nitrogen:
+        input_path: /PartType4/GFM_Metals
+        columns: 3 # 0-based indexing
+        description: >
+          Mass fraction of nitrogen.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Oxygen:
+        input_path: /PartType4/GFM_Metals
+        columns: 4 # 0-based indexing
+        description: >
+          Mass fraction of oxygen.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Neon:
+        input_path: /PartType4/GFM_Metals
+        columns: 5 # 0-based indexing
+        description: >
+          Mass fraction of neon.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Magnesium:
+        input_path: /PartType4/GFM_Metals
+        columns: 6 # 0-based indexing
+        description: >
+          Mass fraction of magnesium.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Silicon:
+        input_path: /PartType4/GFM_Metals
+        columns: 7 # 0-based indexing
+        description: >
+          Mass fraction of silicon.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Iron:
+        input_path: /PartType4/GFM_Metals
+        columns: 8 # 0-based indexing
+        description: >
+          Mass fraction of iron.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
+      Untracked:
+        input_path: /PartType4/GFM_Metals
+        columns: 9 # 0-based indexing
+        description: >
+          Mass fraction of of all other untracked metals.
+        type: ParticleDatasetTranslation
+        children:
+          Denominator_species:
+            constant:
+              - Hydrogen
+              - Helium
+              - Carbon
+              - Nitrogen
+              - Oxygen
+              - Neon
+              - Magnesium
+              - Silicon
+              - Iron
+              - Untracked
+            type: ConstantAttributeTranslation
     StellarWind:
       SNIa:
         MetalMassFractions:
