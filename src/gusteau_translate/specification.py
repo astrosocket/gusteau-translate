@@ -4,19 +4,29 @@ import contextlib
 import itertools
 import json
 import logging
+import re
+from collections.abc import Iterable, Iterator
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from enum import Enum, auto
+from functools import partial
+from heapq import heappop, heappush
 from pathlib import Path
-from typing import Any, ClassVar, Literal, cast
+from typing import (
+    Any,
+    ClassVar,
+    Literal,
+    cast,
+    overload,
+)
 
 import h5py
 import numpy as np
+from pydantic import NonNegativeInt
 
 from .config import LOGGER_NAME, ValidationOptions
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
-type h5obj = h5py.Group | h5py.Dataset
 type integer_type = int | np.int_ | np.int32 | np.uint32 | np.uint64
 integer = integer_type.__value__
 type number_type = float | integer | np.float32 | np.float64
@@ -28,13 +38,25 @@ num_str_array = (np.ndarray, num_str_type.__value__)
 class RegexName(str):
     """Name that is vaguely regex-like"""
 
-    def found_in(self, parent, validation_info):
+    def _apply_regex(self, validation_info) -> Iterable[str]:
         if "{pg}" in self:
             particle_names = validation_info.get("Particle_names", [])
             for pg in particle_names:
-                if self.replace("{pg}", pg):
-                    return parent.get(self.replace("{pg}", pg))
-        return parent.get(self)
+                yield self.replace("{pg}", pg)
+        else:
+            return self
+
+    def found_in(self, parent, validation_info) -> bool:
+        """Return whether this name was found in parent"""
+        return any(name in parent for name in self._apply_regex(validation_info))
+
+    def matched(self, parent, validation_info) -> Iterator:
+        for name in self._apply_regex(validation_info):
+            yield parent.get(name)
+
+    def compare_to(self, name, validation_info) -> bool:
+        """Compare this name to name"""
+        return any(n == name for n in self._apply_regex(validation_info))
 
 
 class ValidationError(Exception): ...
@@ -50,6 +72,156 @@ class GroupMissing(ValidationError): ...
 
 
 class TagMissing(ValidationError): ...
+
+
+type h5obj = h5py.Group | h5py.Dataset
+
+
+class h5type(Enum):
+    ATTRIBUTE = auto()
+    GROUP = auto()
+    DATASET = auto()
+
+
+ATTRIBUTE = h5type.ATTRIBUTE
+GROUP = h5type.GROUP
+DATASET = h5type.DATASET
+
+
+@dataclass(order=True, unsafe_hash=True)
+class visit_obj:
+    name: str = field(init=False, hash=False)
+    type: h5type = field(init=False, hash=False)
+
+    _: KW_ONLY
+
+    source_path: InitVar[str | Path]
+    source: InitVar[h5py.Group | h5py.Dataset | h5py.AttributeManager]
+    _path: Path = field(init=False, hash=True)
+    _obj: h5py.Dataset | h5py.Group | None = field(init=False, default=None, hash=False)
+    _value: Any | None = field(init=False, default=None, hash=False)
+
+    def __post_init__(
+        self,
+        source_path: str | Path,
+        source: h5py.Group | h5py.Dataset | h5py.AttributeManager,
+    ):
+        self._path = Path(source_path)
+        if isinstance(source, h5py.Group):
+            self.name = self._path.stem
+            self.type = GROUP
+            self._obj = source
+        elif isinstance(source, h5py.Dataset):
+            self.name = self._path.stem
+            self.type = DATASET
+            self._obj = source
+        elif isinstance(source, h5py.AttributeManager):
+            self.name = self._path.suffix[1:]
+            self.type = ATTRIBUTE
+            self._value = source[self.name]
+        else:
+            raise ValueError(f"Cannot create h5obj from type {type(source).class_name}")
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @overload
+    @property
+    def obj(self) -> h5py.Dataset: ...
+
+    @overload
+    @property
+    def obj(self) -> h5py.Group: ...
+
+    @property
+    def obj(self) -> Any:
+        match self.type:
+            case h5type.DATASET | h5type.GROUP:
+                return self._obj
+            case _:
+                return self._value
+
+    def depth(self, base: str | Path | visit_obj | None = None) -> int:
+        match self.type:
+            case h5type.DATASET | h5type.GROUP:
+                name = self.path
+            case h5type.ATTRIBUTE:
+                name = self.path.parent / self.path.stem
+            case _:
+                raise ValueError("Impossible type!")
+        # Fully qualified name includes "/" at root which we want to be level 0
+        if base is not None:
+            base = base.path if isinstance(base, visit_obj) else Path(base)
+            name = name.relative_to(base)
+        return len(name.parts) - 1
+
+    @property
+    def attrs(self) -> h5py.AttributeManager:
+        match self.type:
+            case h5type.DATASET | h5type.GROUP:
+                return self.attrs
+            case _:
+                return NotImplemented
+
+
+# Since the built-in visit* functions are limited, we are rolling our own
+def visit_all(
+    start_obj: h5py.Group,
+    *,
+    absolute_max_depth: float | None = None,
+    relative_max_depth: float | None = None,
+    include_attributes: bool = True,
+) -> Iterator[visit_obj]:
+    """Visit all children in a pre-order traversal assuming lexigraphic sorting
+
+    Parameters
+    ----------
+    start_obj: h5py.Group
+        The group to start from
+    max_depth: float, optional
+        The maximum depth to visit. A group's contents will be skipped if their
+        depth is > max_depth
+    include_attributes: bool, optional
+        Flag to include attributes when traversing the hierarchy. Attributes
+        will be included immediately after the group/dataset they're attached to.
+        Default is `True`
+
+    Returns
+    -------
+    :Iterable[visit_obj]
+        Iterable of children
+    """
+    absolute_max_depth = np.inf if absolute_max_depth is None else absolute_max_depth
+    relative_max_depth = np.inf if relative_max_depth is None else relative_max_depth
+    next_objs = []
+
+    def _add_from_group(
+        group: h5py.Group, next_objs: list[visit_obj], *, include_attributes: bool
+    ):
+        for o in group.values():
+            heappush(next_objs, visit_obj(source_path=o.name, source=o))
+        if include_attributes:
+            for name in group.attrs.items():
+                attr_name = f"{group.name}.{name}"
+                heappush(
+                    next_objs, visit_obj(source_path=attr_name, source=group.attrs)
+                )
+
+    _add_from_group(start_obj, next_objs, include_attributes=include_attributes)
+    start_depth = visit_obj(source_path=start_obj.name, source=start_obj).depth()
+    while next_objs:
+        next_obj = heappop(next_objs)
+        yield next_obj
+        abs_depth = next_obj.depth()
+        if (
+            next_obj.type == GROUP
+            and abs_depth < absolute_max_depth
+            and (abs_depth - start_depth) < relative_max_depth
+        ):
+            _add_from_group(
+                next_obj.obj, next_objs, include_attributes=include_attributes
+            )
 
 
 @dataclass
@@ -77,13 +249,42 @@ class ValidatedSpec:
     ) -> h5obj | None:
         raise NotImplementedError("Only implemented in subclasses")
 
-    def validate(
+    def _pre_validate(
+        self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
+    ) -> bool:
+        path_name = obj.name
+        return path_name in validation_info["paths"]
+
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         """Validate field"""
         prefix = "" if prefix is None else prefix
         LOGGER.debug(f"{prefix}Validating {self.class_name()}: {self.name}")
         return True
+
+    def _post_validate(
+        self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
+    ):
+        path_name = obj.name
+        validation_info["paths"].add(path_name)
+
+    def validate(
+        self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
+    ) -> Literal[True]:
+        if self._pre_validate(obj, validation_info=validation_info, prefix=prefix):
+            LOGGER.debug(f"{prefix}Already validated {self.name}")
+            return True
+        self._validate(obj, validation_info=validation_info, prefix=prefix)
+        self._post_validate(obj, validation_info=validation_info, prefix=prefix)
+        return True
+
+    def name_check(self, name: str, validation_info: dict[str, Any]) -> bool:
+        return (
+            self.name.compare_to(name, validation_info)
+            if isinstance(self.name, RegexName)
+            else self.name.lower() == name.lower()
+        )
 
 
 def _check_attribute_type(a: Any, attr_type: type | tuple[type, type]) -> str | None:
@@ -141,11 +342,17 @@ class AttributeSpec(ValidatedSpec):
             return None
         return parent
 
-    def validate(
+    def _pre_validate(
+        self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
+    ) -> bool:
+        path_name = f"{obj.name}.{self.name}"
+        return path_name in validation_info["paths"]
+
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         """Validate object has this attribute with correct type"""
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
         if self.name not in obj.attrs:
             if self.optional:
                 return True
@@ -178,6 +385,12 @@ class AttributeSpec(ValidatedSpec):
             validation_info[self.sets_info] = a
         return True
 
+    def _post_validate(
+        self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
+    ):
+        path_name = f"{obj.name}.{self.name}"
+        validation_info["paths"].add(path_name)
+
 
 @dataclass
 class OptionalAttributeSpec(AttributeSpec):
@@ -204,7 +417,7 @@ class DatasetSpec(ValidatedSpec):
                 f"Attempting to check for {self.name} dataset under {type(parent)}"
             )
         dobj = (
-            self.name.found_in(parent, validation_info)
+            next(self.name.matched(parent, validation_info))
             if isinstance(self.name, RegexName)
             else parent.get(self.name)
         )
@@ -216,11 +429,11 @@ class DatasetSpec(ValidatedSpec):
             return None
         return dobj
 
-    def validate(
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         """Validate dataset in object"""
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
         if not isinstance(obj, h5py.Dataset):
             raise ValidationError(f"{obj} is not a Dataset")
         ndim = obj.ndim
@@ -274,12 +487,12 @@ class ParticleDatasetSpec(DatasetSpec):
     def __post_init__(self):
         self.reqd_attrs.extend(required_particle_dataset_attributes())
 
-    def validate(
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         """Validate, including required attributes"""
         prefix = " " if prefix is None else prefix
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
         all(
             a.validate(obj, validation_info=validation_info, prefix=prefix + " ")
             for a in self.reqd_attrs
@@ -342,12 +555,14 @@ class OptionalValidationGroup(ValidatedSpec):
             raise ValidationError(f"Too many datasets in {self.name} found")
         return parent
 
-    def validate(
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         prefix = "" if prefix is None else prefix
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
-
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
+        path_name = obj.name
+        if path_name in validation_info["paths"]:
+            return True
         for option in self.options:
             o = None
             with contextlib.suppress(ValidationError):
@@ -355,9 +570,14 @@ class OptionalValidationGroup(ValidatedSpec):
                     obj, validation_info=validation_info, prefix=prefix + " "
                 )
             if o is not None:
-                option.validate(o, validation_info=validation_info, prefix=prefix + " ")
-
+                option._validate(
+                    o, validation_info=validation_info, prefix=prefix + " "
+                )
+        validation_info["paths"].add(path_name)
         return True
+
+    def name_check(self, name: str, validation_info: dict[str, Any]) -> bool:
+        return any(o.name_check(name, validation_info) for o in self.options)
 
 
 @dataclass
@@ -382,7 +602,7 @@ class GroupSpec(ValidatedSpec):
                 f"Attempting to check for {self.name} dataset under {type(parent)}"
             )
         dobj = (
-            self.name.found_in(parent, validation_info)
+            next(self.name.matched(parent, validation_info))
             if isinstance(self.name, RegexName)
             else parent.get(self.name)
         )
@@ -394,7 +614,7 @@ class GroupSpec(ValidatedSpec):
             return None
         return dobj
 
-    def validate(
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         """Validate group
@@ -420,7 +640,7 @@ class GroupSpec(ValidatedSpec):
             fields or subgroups are missing
         """
         prefix = "" if prefix is None else prefix
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
         if not isinstance(obj, h5py.Group):
             raise ValidationError(f"{obj} is not a Group. (It's a {type(obj)})")
         # for a in self.attrs:
@@ -447,6 +667,181 @@ class GroupSpec(ValidatedSpec):
             o.validate(pobj, validation_info=validation_info, prefix=prefix + " ")
         LOGGER.debug(f"{prefix}Finished validating group {self.name}")
         return True
+
+
+@dataclass
+class _BoundedAttributeSpec:
+    """Class to hold a DatagroupSpec, its bounds, and a counter"""
+
+    spec: AttributeSpec
+    max_depth: int | float = 0
+    min_depth: NonNegativeInt = 0
+    _: KW_ONLY
+    match_regex: str | None = None
+    skip_regex: str | None = None
+    count: int = field(init=False)
+    type_: type | None = None
+
+    def __post_init__(self):
+        self.max_depth = np.inf if self.max_depth < 0 else self.max_depth
+
+
+type BoundedAttributeSpec = (
+    AttributeSpec
+    | tuple[AttributeSpec, int]
+    | tuple[AttributeSpec, int, int]
+    | _BoundedAttributeSpec
+)
+# Type signifying a recursively bounded Attribute
+# The options are (attribute, 0, inf), (attribute, 0, max) and
+# (attribute, min, max). 0 <= min and, if max>=0, min <= max.
+# A negative value for max is equivalent to infinity.
+
+
+def _initialize_bounded_attr_specs(
+    subdatagroup_attrs: list[tuple[BoundedAttributeSpec, type]],
+) -> list[_BoundedAttributeSpec]:
+    bas_objs = []
+    for a, type_ in subdatagroup_attrs:
+        if isinstance(a, tuple):
+            bas_objs.append(_BoundedAttributeSpec(*a, type_=type_))
+        elif isinstance(a, _BoundedAttributeSpec):
+            a.type_ = type_
+            bas_objs.append(a)
+        else:
+            # (datagroup, 0, max, 1)
+            bas_objs.append(_BoundedAttributeSpec(a, type_=type_))
+    return bas_objs
+
+
+def _validate_subdatagroup_attributes(
+    name: str,
+    obj: h5py.Group | h5py.Dataset,
+    *,
+    parent: h5py.Group,
+    subdatagroup_attrs: list[_BoundedAttributeSpec],
+    validation_info: dict[str, Any],
+    prefix: str,
+):
+
+    base = parent.name
+    depth = len(name.removeprefix(base).split("/")) - 1
+    prefix = prefix + " " * depth
+    for a in subdatagroup_attrs:
+        regex_check = (
+            a.match_regex is not None and re.match(a.match_regex, name) is None
+        ) or (a.skip_regex is not None and re.match(a.skip_regex, name) is not None)
+        type_check = a.type_ is not None and not isinstance(obj, a.type_)
+        depth_check = depth < a.min_depth or a.max_depth < depth
+        if regex_check or type_check or depth_check:
+            continue
+        pobj = a.spec.check_presence(
+            obj, validation_info=validation_info, prefix=prefix
+        )
+        if pobj is None:
+            continue
+        a.spec.validate(pobj, validation_info=validation_info, prefix=prefix)
+
+
+@dataclass
+class _BoundedDataGroupSpec_Checklist:
+    """Class to hold a DatagroupSpec, its bounds, and checklist of parents"""
+
+    spec: ValidatedSpec
+    max_depth: float = 0
+    min_depth: NonNegativeInt = 0
+    minimum_count: InitVar[int | None] = None
+    min_count: int = field(init=False)
+    _: KW_ONLY
+    match_regex: str | None = None
+    skip_regex: str | None = None
+    possible_groups: NonNegativeInt = field(default=1, init=False)
+    checklist: set[visit_obj] = field(default_factory=set[visit_obj], init=False)
+
+    def __post_init__(self, minimum_count: int | None):
+        self.min_count = (
+            int(not self.spec.optional) if minimum_count is None else minimum_count
+        )
+        self.max_depth = np.inf if self.max_depth < 0 else self.max_depth
+
+
+type BoundedDataGroupSpecFull = tuple[ValidatedSpec, int, int, int]
+type BoundedDataGroupSpec = (
+    ValidatedSpec
+    | tuple[ValidatedSpec, int]
+    | tuple[ValidatedSpec, int, int]
+    | BoundedDataGroupSpecFull
+    | _BoundedDataGroupSpec_Checklist
+)
+
+
+# Type signifying a recursively bounded Datagroup
+# The options are (datagroup, 0, inf, 1), (datagroup, 0, max, 1),
+# (datagroup, min, max, 1)  and (datagroup, min, max, min_count). 0 <= min and,
+# if max>=0, min <= max.
+# A negative value for max is equivalent to infinity.
+# A negative value for min_count is equivalent to infinity, i.e. all subgroups
+# must contain this datagroup
+# A 0 value for min_count is equivalent to specifying the optional=True
+# parameter on the ValidatedSpec
+
+
+def _initialize_bounded_datagroups(
+    subdatagroups: list[BoundedDataGroupSpec],
+) -> list[_BoundedDataGroupSpec_Checklist]:
+    sdg_objs = []
+    for sdg in subdatagroups:
+        if isinstance(sdg, tuple):
+            sdg_objs.append(_BoundedDataGroupSpec_Checklist(*sdg))
+        elif isinstance(sdg, _BoundedDataGroupSpec_Checklist):
+            sdg_objs.append(sdg)
+        else:
+            sdg_objs.append(_BoundedDataGroupSpec_Checklist(sdg))
+    return sdg_objs
+
+
+def _validate_subdatagroups(
+    group: h5py.Group,
+    subdatagroups: list[BoundedDataGroupSpec],
+    validation_info: dict[str, Any],
+    prefix: str,
+) -> Literal[True]:
+    sdg_objs = _initialize_bounded_datagroups(subdatagroups)
+    start_obj = visit_obj(source_path=group.name, source=group)
+    for sdg in sdg_objs:
+        for child in visit_all(
+            start_obj.obj, relative_max_depth=sdg.max_depth, include_attributes=False
+        ):
+            match_check = (
+                sdg.match_regex is not None
+                and re.match(sdg.match_regex, str(child.path)) is None
+            )
+            skip_check = (
+                sdg.skip_regex is not None
+                and re.match(sdg.skip_regex, str(child.path)) is not None
+            )
+            depth_check = child.depth(start_obj) < sdg.min_depth
+            name_check = not sdg.spec.name_check(child.name, validation_info)
+            if match_check or skip_check or depth_check or name_check:
+                continue
+            sdg.checklist.add(child)
+            sdg.possible_groups += child.type == GROUP
+            if len(sdg.checklist) > sdg.min_count:
+                break
+        expected = sdg.possible_groups if sdg.min_count < 0 else sdg.min_count
+        if len(sdg.checklist) < expected:
+            raise ValidationError(
+                f"Insufficient {sdg.spec.name} subdata groups found for"
+                f" {start_obj.name}."
+                f" Expected {expected} but found {len(sdg.checklist)}"
+            )
+        LOGGER.debug(
+            f"{prefix}Need to validate {[str(check.path) for check in sdg.checklist]}"
+            f" for {type(sdg.spec).class_name()} {sdg.spec.name}"
+        )
+        for child in sdg.checklist:
+            sdg.spec.validate(child.obj, validation_info=validation_info, prefix=prefix)
+    return True
 
 
 class INCLUDE_LEVEL(Enum):
@@ -497,11 +892,32 @@ class TagSpec:
 
     _: KW_ONLY
 
-    attrs: list[AttributeSpec] = field(default_factory=list[AttributeSpec])
-    """Required group attributes"""
+    group_attrs: list[AttributeSpec] = field(default_factory=list[AttributeSpec])
+    """Required attributes on the tagged group"""
 
-    datagroups: list[ValidatedSpec] = field(default_factory=list[ValidatedSpec])
-    """Required datasets"""
+    subdataset_attrs: list[BoundedAttributeSpec] = field(
+        default_factory=list[BoundedAttributeSpec]
+    )
+    """
+    Required attributes on datasets in the tagged group.
+    The list element options are (attribute, 0, inf), (attribute, 0, max) and 
+    (attribute, min, max). 0 <= min and, if max>=0, min <= max.
+    A negative value for max is equivalent to infinity.
+    """
+
+    subgroup_attrs: list[BoundedAttributeSpec] = field(
+        default_factory=list[BoundedAttributeSpec]
+    )
+    """Required attributes on subgroups in the tagged group.
+    The list element options are (attribute, 0, inf), (attribute, 0, max) and 
+    (attribute, min, max). 0 <= min and, if max>=0, min <= max.
+    A negative value for max is equivalent to infinity.
+    """
+
+    datagroups: list[BoundedDataGroupSpec] = field(
+        default_factory=list[BoundedDataGroupSpec]
+    )
+    """Required datagroups under the tagged group"""
 
     includes: dict[str, INCLUDE_LEVEL] = field(
         default_factory=lambda: {"particles": ABOVE}
@@ -513,7 +929,7 @@ class TagSpec:
 
     def validate(
         self,
-        obj: h5py.Group,
+        group: h5py.Group,
         *,
         validation_info: dict[str, Any],
         prefix: str | None = None,
@@ -521,151 +937,35 @@ class TagSpec:
         """Validate that provided group has all of the specified fields and subgroups"""
         prefix = "" if prefix is None else prefix
         LOGGER.debug(f"{prefix}Validating tag {self.name}")
-        # for a in self.attrs:
-        #     if a.name not in obj.attrs:
-        #         if not a.optional:
-        #             raise AttributeMissing(
-        #                 f"Missing required attribute {a.name} "
-        #                 f"from {obj} for tag {self.name}"
-        #             )
-        #         continue
-        #     a.validate(obj, validation_info=validation_info, prefix=prefix + " ")
-
-        # for d in self.datagroups:
-        #     dobj = obj.get(d.name)
-        #     if dobj is None:
-        #         if not d.optional:
-        #             raise DataGroupMissing(
-        #                 f"Missing required {d._TYPE} {d.name} "
-        #                 f"from {obj} for tag {self.name}"
-        #             )
-        #         continue
-        #     d.validate(dobj, validation_info=validation_info, prefix=prefix + " ")
-        for o in itertools.chain(self.attrs, self.datagroups):
-            pobj = o.check_presence(
-                obj, validation_info=validation_info, prefix=prefix + " "
-            )
-            if pobj is None:
+        for a in self.group_attrs:
+            if (
+                a.check_presence(group, validation_info=validation_info, prefix=prefix)
+                is None
+            ):
                 continue
-            o.validate(pobj, validation_info=validation_info, prefix=prefix + " ")
+            a.validate(group, validation_info=validation_info, prefix=prefix + " ")
+
+        subdatagroup_attrs: list[tuple[BoundedAttributeSpec, type]] = [
+            (a, h5py.Dataset) for a in self.subdataset_attrs
+        ]
+        subdatagroup_attrs.extend([(a, h5py.Group) for a in self.subgroup_attrs])
+
+        group.visititems(
+            partial(
+                _validate_subdatagroup_attributes,
+                parent=group,
+                subdatagroup_attrs=_initialize_bounded_attr_specs(subdatagroup_attrs),
+                validation_info=validation_info,
+                prefix=prefix + " ",
+            )
+        )
+
+        _validate_subdatagroups(group, self.datagroups, validation_info, prefix + " ")
 
         _check_below_tags(self.name, self.includes, validation_info)
 
         LOGGER.debug(f"{prefix}Finished validating tag {self.name}")
 
-        return True
-
-
-def _get_attr_with_subgroups(obj: h5py.Group, name: str) -> h5obj | None:
-    if name in obj.attrs:
-        return obj
-    for subgroup_name in ChemicalTagSpec._QUANTITIES:
-        subgroup = obj.get(subgroup_name)
-        if subgroup is not None and name in subgroup.attrs:
-            return subgroup
-
-    return None
-
-
-def _get_obj_with_subgroups(obj: h5py.Group, name: str) -> h5py.Group | None:
-    if name in obj:
-        return obj[name]
-    LOGGER.debug(f"{name} not at current level, checking subgroups of {obj.name}")
-    for subgroup_name in ChemicalTagSpec._QUANTITIES:
-        subgroup = obj.get(subgroup_name)
-        LOGGER.debug(f"  Checking subgroup {subgroup_name} ({subgroup})")
-        if subgroup is not None and name in subgroup:
-            return subgroup[name]
-    return None
-
-
-@dataclass
-class ChemicalTagSpec(TagSpec):
-    """
-    Tags for chemical quantities and types
-
-    Chemical datasets are specified in the form `Chemical_qty/Chemical_type`,
-    e.g. `Abundances/Hydrogen`, but the required datasets can be split across
-    quantity types. So you can have `Abundances/Hydrogen/P` and
-    `MassFractions/Hydrogen/E`, corresponding to the tags `["Abundance",
-    "Hydrogen", "MassFraction"]`.
-
-    So in a sense, the tags could be `["Hydrogen-Abundance",
-    "Hydrogen-MassFraction"]` or tags on the subgroups, like
-    `["Abundances"."Hydrogen", "MassFraction"."Hydrogen"]`, except that all of
-    species datasets need to be present across all groups, and the tags are
-    expected to be shared at the "top-level".
-
-    So we need a special subclass and validation logic.
-    """
-
-    group: str
-    """Group that this tag adds"""
-
-    _: KW_ONLY
-
-    extra_attrs: dict[str, list[AttributeSpec]] = field(
-        default_factory=dict[str, list[AttributeSpec]]
-    )
-    """
-    Extra required attributes that are only required if one of the
-    combination tags matches
-    """
-
-    extra_datagroups: dict[str, list[ValidatedSpec]] = field(
-        default_factory=dict[str, list[ValidatedSpec]]
-    )
-    """
-    Extra required datasets/groups that are only required if one of the
-    combination tags matches
-    """
-
-    _QUANTITIES: ClassVar[set[str]] = set()
-
-    def validate(
-        self,
-        obj: h5py.Group,
-        *,
-        validation_info: dict[str, Any],
-        prefix: str | None = None,
-    ) -> Literal[True]:
-        """Validate that provided group has all of the specified fields and subgroups"""
-        prefix = "" if prefix is None else prefix
-        LOGGER.debug(f"{prefix}Validating chemical tag {self.name} on {obj.name}")
-        attrs = self.attrs
-        datagroups = self.datagroups
-        for s, a in self.extra_attrs.items():
-            attrs.extend(a if s in obj else [])
-        for s, d in self.extra_datagroups.items():
-            datagroups.extend(d if s in obj else [])
-
-        for a in attrs:
-            full_name = f"{self.group}/{a.name}"
-            aobj = _get_attr_with_subgroups(obj, full_name)
-            if aobj is None:
-                if not a.optional:
-                    raise AttributeMissing(
-                        f"Missing required attribute {full_name} "
-                        f"from {aobj} for tag {self.name}"
-                    )
-                continue
-            a.validate(aobj, validation_info=validation_info, prefix=prefix + " ")
-
-        for d in datagroups:
-            full_name = f"{self.group}/{d.name}"
-            dobj = _get_obj_with_subgroups(obj, full_name)
-            if dobj is None:
-                if not d.optional:
-                    raise DataGroupMissing(
-                        f"Missing required {d._TYPE} {full_name} "
-                        f"from {obj} for tag {self.name}"
-                    )
-                continue
-            d.validate(dobj, validation_info=validation_info, prefix=prefix + " ")
-
-        _check_below_tags(self.name, self.includes, validation_info)
-
-        LOGGER.debug(f"{prefix}Finished validating chemical tag {self.name}")
         return True
 
 
@@ -718,7 +1018,8 @@ def _check_tags(
                 case _:
                     pass
         included_tags[tag] = None
-    LOGGER.debug(f"{prefix}Including tags {set(included_tags) - tags}")
+    if len(set(included_tags) - tags):
+        LOGGER.debug(f"{prefix}Including tags {set(included_tags) - tags}")
     return set(included_tags)
 
 
@@ -742,7 +1043,7 @@ class TaggedGroupSpec(GroupSpec):
         tags: set[str],
         *,
         validation_info: dict[str, Any],
-        prefix: str | None = None,
+        prefix: str,
     ) -> Literal[True]:
         """Validate any tags in the Tags attribute"""
         LOGGER.debug(
@@ -752,21 +1053,52 @@ class TaggedGroupSpec(GroupSpec):
         for tag_str in tags:
             tag = tag_defs.get(tag_str)
             if tag is None:
-                LOGGER.warning(f"Unknown tag {tag_str}, skipping!")
+                tag = TagSpec(
+                    tag_str,
+                    datagroups=[
+                        _BoundedDataGroupSpec_Checklist(
+                            TaggedGroupSpec(tag_str.capitalize()),
+                            min_depth=0,
+                            max_depth=2,
+                            minimum_count=1,
+                        )
+                    ],
+                )
+                chem_attempt_msg = ""
+
+                def _lower_first(s: Any):
+                    s = str(s)
+                    return s[:1].lower() + s[1:]
+
+                try:
+                    LOGGER.debug(
+                        f"{prefix}Attempting to validate {tag_str}"
+                        " as generic/chemical tag"
+                    )
+                    tag.validate(obj, validation_info=validation_info, prefix=prefix)
+                    LOGGER.debug(f"{prefix}Validated as generic/chemical tag {tag_str}")
+                except ValidationError as ve:
+                    chem_attempt_msg = (
+                        "Attempted validation as generic/chemical tag,"
+                        f" but {_lower_first(ve)}"
+                    )
+                if not chem_attempt_msg:
+                    continue
+                LOGGER.warning(f"Unknown tag {tag_str}, skipping! " + chem_attempt_msg)
                 validation_info["violations"].append(
-                    f"Found unknown tag {tag_str} on {obj.name}"
+                    f"Found unknown tag {tag_str} on {obj.name}. " + chem_attempt_msg
                 )
                 continue
             tag_defs[tag_str].validate(
-                obj, validation_info=validation_info, prefix=prefix
+                obj, validation_info=validation_info, prefix=prefix + " "
             )
         return True
 
-    def validate(
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         prefix = "" if prefix is None else prefix
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
         # can't use assert_type below because logic is too complicated
         assert isinstance(obj, h5py.Group)
         # We've already validated the Tags attribute exists
@@ -1087,70 +1419,26 @@ mass_density = TagSpec(
 abundances = TagSpec(
     name="Abundance",
     datagroups=[TaggedGroupSpec(name="Abundances")],
+    subdataset_attrs=[
+        _BoundedAttributeSpec(
+            AttributeSpec(name="Denominator_species", attr_type=(np.ndarray, str)),
+            match_regex="Abundances",
+            skip_regex="Total",
+        )
+    ],
 )
 
 mass_fraction = TagSpec(
     name="MassFraction",
     includes={"Massive": ABOVE},
     datagroups=[TaggedGroupSpec(name="MassFractions")],
-)
-
-hydrogen = ChemicalTagSpec(
-    name="Hydrogen",
-    group="Hydrogen",
-    datagroups=[
-        ParticleDatasetSpec(name="H"),
-        ParticleDatasetSpec(name="Hp"),
-        ParticleDatasetSpec(name="E"),
-        ParticleDatasetSpec(name="H2"),
+    subdataset_attrs=[
+        _BoundedAttributeSpec(
+            AttributeSpec(name="Denominator_species", attr_type=(np.ndarray, str)),
+            match_regex="MassFractions",
+            skip_regex="Total",
+        )
     ],
-)
-
-helium = ChemicalTagSpec(
-    name="Helium",
-    group="Helium",
-    datagroups=[
-        ParticleDatasetSpec(name="He"),
-        OptionalParticleDatasetSpec(name="Hep"),
-        OptionalParticleDatasetSpec(name="Hepp"),
-    ],
-)
-
-hydrogen_extended = ChemicalTagSpec(
-    name="ExtendedHydrogen",
-    group="Hydrogen",
-    datagroups=[
-        ParticleDatasetSpec(name="Hm"),
-        ParticleDatasetSpec(name="D"),
-        ParticleDatasetSpec(name="Dp"),
-        ParticleDatasetSpec(name="Dm"),
-        ParticleDatasetSpec(name="H2p"),
-        ParticleDatasetSpec(name="HD"),
-        ParticleDatasetSpec(name="HDp"),
-        ParticleDatasetSpec(name="HDm"),
-        ParticleDatasetSpec(name="H3p"),
-        ParticleDatasetSpec(name="H2Dp"),
-    ],
-)
-
-metal_only_denom = AttributeSpec(
-    name="Metal_only_denominator",
-    attr_type=number,
-)
-
-metallic = ChemicalTagSpec(
-    name="Metallic",
-    group="Metals",
-    extra_attrs={"abundance": [metal_only_denom], "massfraction": [metal_only_denom]},
-    extra_datagroups={
-        "abundance": [
-            ParticleDatasetSpec(
-                name="TotalAbundances",
-                optional=True,
-            )
-        ],
-        "massfraction": [ParticleDatasetSpec(name="TotalMasses", optional=True)],
-    },
 )
 
 ## tag_defs
@@ -1187,14 +1475,9 @@ tag_defs.update(
 chemical_quantity_tags = {
     tag.name: tag for tag in [abundances, mass_density, mass_fraction, number_density]
 }
-chemical_type_tags = {tag.name.lower(): tag for tag in [hydrogen, helium, metallic]}
 
 tag_defs.update({k.lower(): v for k, v in chemical_quantity_tags.items()})
-tag_defs.update(chemical_type_tags)
 
-ChemicalTagSpec._QUANTITIES.update(
-    [t.datagroups[0].name for _, t in chemical_quantity_tags.items()]
-)
 
 # Resume specification object definitions
 
@@ -1232,14 +1515,14 @@ class ParticleGroupSpec(TaggedGroupSpec):
         super().__post_init__()
         self.attrs.extend(required_particle_group_attributes())
 
-    def validate(
+    def _validate(
         self, obj: h5obj, *, validation_info: dict[str, Any], prefix: str | None = None
     ) -> Literal[True]:
         """Validate that provided object is a valid particle group at the top level"""
         validation_info["N"] = self.n
         if obj.parent.name != "/":
             raise ValidationError("Particle groups must be top-level!")
-        super().validate(obj, validation_info=validation_info, prefix=prefix)
+        super()._validate(obj, validation_info=validation_info, prefix=prefix)
         return True
 
 
@@ -1290,6 +1573,7 @@ class GUSTEAU:
         """
         options = ValidationOptions() if options is None else options
         validation_info: dict[str, Any] = {}
+        validation_info["paths"] = set()
         validation_info["violations"] = []
         visited_groups: set[str] = set(self.required_tlgs.keys())
         visited_groups.update(self.optional_tlgs)
