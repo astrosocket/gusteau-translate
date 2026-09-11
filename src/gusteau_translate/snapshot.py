@@ -1,6 +1,8 @@
 import json
 import logging
+import os
 import tempfile
+from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from traceback import TracebackException
@@ -8,6 +10,7 @@ from typing import Literal, cast
 
 import h5py
 import unyt.dimensions as ud
+from natsort import natsorted
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 from unyt.unit_systems import UnitSystem
@@ -24,6 +27,8 @@ from .pipeline import ErrorHandler
 from .specification import (
     ValidationError,
     get_spec_from_version,
+    h5type,
+    visit_all,
 )
 from .translation_base import (
     Translation,
@@ -34,6 +39,112 @@ from .translation_base import (
 from .translations import GroupTranslation
 
 LOGGER = logging.getLogger(LOGGER_NAME)
+
+
+@dataclass(frozen=True)
+class _SubDataset:
+    filename: Path
+    shape: tuple[int, ...]
+
+
+def _create_virtual_dataset(
+    virtual: h5py.File, dataset_path: str, file_list: list[Path]
+):
+    """Create a virtual dataset in virtual from the dataset_path in each file
+
+    Parameters
+    ----------
+    virtual: h5py.File
+        The file that will contain the virtual dataset
+    dataset_path: Path
+        The path to the dataset in each file.
+        Must be identical for all files in the list.
+    file_list: list[Path]
+        List of paths to the hdf5 files that contain the subdatasets to be combined.
+    """
+    # Process has 5 steps
+    # 1. Determine the final dimensions and data type of the virtual dataset
+    # 2. Create a VirtualLayout object representing the virtual dataset
+    # 3. Create VirtualSource objects representing each of the subdatasets
+    # 4. Map the VirtualSource objects into slices in the VirtualLayout
+    # 5. Convert the VirtualLayout into a virtual dataset
+    # We will actually do the steps out of order because we don't know a priori
+    # the dimensions of the virtual dataset. What we do know is that all of the
+    # datasets are effectively vertically stacked, i.e. in the 0th dimension.
+    # So we'll start with step 3, reading the metadata of every subdataset to
+    # determine that subdatasets shape and the final dataset's size
+    subdatasets = []
+    dtype = float
+    for filename in file_list:
+        with h5py.File(str(filename), "r") as subfile:
+            shape = subfile[dataset_path].shape
+            subdatasets.append(_SubDataset(filename, shape))
+            dtype = subfile[dataset_path].dtype
+    total_length = sum(s.shape[0] for s in subdatasets)
+    shape = (total_length, *subdatasets[0].shape[1:])
+    LOGGER.debug(
+        f"Creating virtual layout for {dataset_path} with {dtype=} and {shape=}"
+    )
+    layout = h5py.VirtualLayout(
+        shape,
+        dtype,
+    )
+    offset = 0
+    for subds in subdatasets:
+        layout[offset : offset + subds.shape[0], ...] = h5py.VirtualSource(
+            subds.filename, dataset_path, shape=subds.shape
+        )
+    LOGGER.info(f"Creating virtual dataset {dataset_path}")
+    virtual.create_virtual_dataset(dataset_path, layout)
+
+
+def _build_virtual_input_dataset(snapshots: list[Path], virtual_file: Path) -> Path:
+    """Build a virtual snapshot to combine multipart files"""
+    LOGGER.debug("Setting up multipart virtual input file")
+    # need file to obtain all of the datasets, groups, and attributes
+    infile_path = snapshots[0]
+    with (
+        h5py.File(infile_path, "r", libver="latest") as infile,
+        h5py.File(virtual_file, "w", libver="latest") as virtual,
+    ):
+        for obj in visit_all(infile):
+            match obj.type:
+                case h5type.ATTRIBUTE:
+                    LOGGER.debug(f"Adding attribute {obj.name} to {obj.path.stem}")
+                    virtual[obj.path.stem].attrs[obj.name] = obj.obj
+                case h5type.GROUP:
+                    LOGGER.debug(f"Adding group {obj.path!s}")
+                    virtual.require_group(str(obj.path))
+                case h5type.DATASET:
+                    _create_virtual_dataset(virtual, str(obj.path), snapshots)
+                case _:
+                    raise ValueError(f"Unknown h5 object type: {obj.type}!")
+    return virtual_file
+
+
+def _check_snapshot_glob(
+    snapshot_path: str | Path,
+) -> tuple[Path, list[Path]]:
+    snapshot_path = Path(snapshot_path)
+    if h5py.is_hdf5(snapshot_path):
+        return snapshot_path, []
+    parent = snapshot_path.parent
+    # Note: we are explicitly using the third-party library here.
+    # While we could use a simpler regex based method, (e.g. from
+    # https://stackoverflow.com/a/11150413), it would be potentially quite
+    # fragile
+    snapshots = natsorted(parent.glob(f"{snapshot_path.name}*"))
+    if not snapshots:
+        raise ValueError(f"Glob pattern {snapshot_path} produced no snapshots!")
+    if not all(h5py.is_hdf5(snapshot) for snapshot in snapshots):
+        bad_files = [snapshot for snapshot in snapshots if not h5py.is_hdf5(snapshot)]
+        raise ValueError(
+            f"Snapshot glob {snapshot_path} is not specific enough."
+            f" It produces non-hdf5 files {bad_files}"
+        )
+    base_name = Path(os.path.commonprefix(snapshots))
+    virtual_file = Path(f"{base_name.stem}_virtual.hdf5")
+    return virtual_file, snapshots
 
 
 def _create_field_metadata(outfile: h5py.File):
@@ -200,12 +311,12 @@ class Snapshot:
     directory: set
     """List of all output attributes/datasets ever visited"""
 
+    multipart_file: list[Path]
+
     def __init__(self, snapshot_path: str | Path):
 
-        if not h5py.is_hdf5(snapshot_path):
-            raise ValueError("Must provide valid path to snapshot")
+        self.path, self.multipart_file = _check_snapshot_glob(snapshot_path)
 
-        self.path = Path(snapshot_path)
         self.directory: set[str] = set()
 
     def translate(
@@ -221,6 +332,11 @@ class Snapshot:
 
         if h5py.is_hdf5(new_snapshot_path) and not options.force_overwrite:
             raise FileExistsError(new_snapshot_path)
+
+        if self.multipart_file:
+            self.path = _build_virtual_input_dataset(
+                self.multipart_file, Path(new_snapshot_path).parent / self.path
+            )
 
         with (
             h5py.File(self.path) as infile,

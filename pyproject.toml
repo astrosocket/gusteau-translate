@@ -16,6 +16,7 @@ dependencies = [
     "ruamel-yaml>=0.19.1,<0.20",
     "packingcubes>=0.6.6,<0.7",
     "pydantic>=2.13.4,<3",
+    "natsort>=8.4.0,<9",
 ]
 name = "gusteau-translate"
 requires-python = ">= 3.13"
