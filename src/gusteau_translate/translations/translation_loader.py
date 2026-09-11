@@ -157,8 +157,9 @@ def recurse_groups(
                     LOGGER.warning(f"Failed on {key=}, {type_=}, {value=}")
                     raise TranslationParseError(ex) from ex
 
+                children_have_particles = has_particles
                 if isinstance(field, GroupTranslation):
-                    has_particles = has_particles or field.has_particles
+                    children_have_particles |= field.has_particles
                     field.has_particles = has_particles or field.has_particles
 
                 if children:
@@ -167,7 +168,7 @@ def recurse_groups(
                         translation,
                         field.input_path,
                         out_path=field.output_path,
-                        has_particles=has_particles,
+                        has_particles=children_have_particles,
                     )
             else:
                 recurse_groups(
