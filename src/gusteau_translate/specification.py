@@ -1239,11 +1239,11 @@ runinfo = GroupSpec(
 units = GroupSpec(
     name="Units",
     attrs=[
-        AttributeSpec("Unit_length_CGS", number),
-        AttributeSpec("Unit_mass_CGS", number),
-        AttributeSpec("Unit_time_CGS", number),
-        AttributeSpec("Unit_temperature_CGS", number),
-        AttributeSpec("Unit_current_CGS", number),
+        AttributeSpec("Unit_length_CGS", number, sets_info="U_L"),
+        AttributeSpec("Unit_mass_CGS", number, sets_info="U_M"),
+        AttributeSpec("Unit_time_CGS", number, sets_info="U_t"),
+        AttributeSpec("Unit_temperature_CGS", number, sets_info="U_T"),
+        AttributeSpec("Unit_current_CGS", number, sets_info="U_I"),
     ],
 )
 
