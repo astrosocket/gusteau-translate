@@ -989,6 +989,9 @@ PartType3:
   type: GroupTranslation
   description: "Tracer particles datasets (not particles)"
   has_particles: false
+  pipeline:
+    LinkStep:
+      path: /PartType3
   # Since this is not actually a particle type, we can let the auto discovery
   # grab everything
 
@@ -1161,6 +1164,20 @@ PartType4:
       units: "(km/s)**2"
       a_scale: -1
       type: ParticleDatasetTranslation
+    StellarHsml:
+      description: >
+        The comoving radius of the spehere centered on this particle enclosing
+        the 32$\pm$1 nearest particles of this same type. Useful for
+        visualization
+      # h_sml is a specific quantity, so we can't pluralize it
+      output_path: Subgrid/StellarHsml
+      units: "kpc"
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+      pipeline:
+        LinkStep:
+          path: /Stars/Subgrid/KernelLengths
     SubfindDMDensity:
       description: >
         The local total comoving mass density, estimated using the standard
