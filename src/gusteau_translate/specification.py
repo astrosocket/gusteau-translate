@@ -1244,6 +1244,11 @@ units = GroupSpec(
         AttributeSpec("Unit_time_CGS", number, sets_info="U_t"),
         AttributeSpec("Unit_temperature_CGS", number, sets_info="U_T"),
         AttributeSpec("Unit_current_CGS", number, sets_info="U_I"),
+        AttributeSpec("Unit_length_PhysCGS", number, sets_info="U_pL"),
+        AttributeSpec("Unit_mass_PhysCGS", number, sets_info="U_pM"),
+        AttributeSpec("Unit_time_PhysCGS", number, sets_info="U_pt"),
+        AttributeSpec("Unit_temperature_PhysCGS", number, sets_info="U_pT"),
+        AttributeSpec("Unit_current_PhysCGS", number, sets_info="U_pI"),
     ],
 )
 
