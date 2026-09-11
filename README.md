@@ -18,9 +18,8 @@ See the GUSTEAU specification at [](https://gusteau-spec.readthedocs.io).
 
 <!-- --8<-- [start:requirements] -->
 
-[![Supported Python Versions](https://img.shields.io/pypi/pyversions/gusteau-tramslate)](https://pypi.org/project/gusteau-translate/)
-is required. Python versions outside this range may work, but their usage is
-not supported, and at least some features are >Python 3.13.
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/gusteau-tramslate)](https://pypi.org/project/gusteau-translate/) is required.
+Python versions outside this range may work, but their usage is not supported, and at least some features are >Python 3.13.
 
 ### Python packages
 
