@@ -231,6 +231,43 @@ Units:
     pipeline:
       Math2Step: {equation: "y/x", external: "/Header.UnitLength_in_cm"}
       SaveQuantityStep: {name: U_t}
+  Unit_current_PhysCGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pI}
+  Unit_length_PhysCGS:
+    input_path: "/Header.UnitLength_in_cm"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        equation: "x*y/y1"
+        external:
+          - "/Header.Time"
+          - "/Header.HubbleParam"
+      SaveQuantityStep: {name: U_pL}
+  Unit_mass_PhysCGS:
+    input_path: "/Header.UnitMass_in_g"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step: {equation: "x/y", external: "/Header.HubbleParam"}
+      SaveQuantityStep: {name: U_pM}
+  Unit_temperature_PhysCGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pT}
+  Unit_time_PhysCGS:
+    input_path: "/Header.UnitVelocity_in_cm_per_s"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        equation: "y/x*y1/y2"
+        external:
+          - "/Header.UnitLength_in_cm"
+          - "/Header.Time"
+          - "/Header.HubbleParam"
+      SaveQuantityStep: {name: U_pt}
 
 Parameters:
   output_path: /RunInfo/Parameters

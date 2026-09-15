@@ -305,6 +305,40 @@ Units:
     type: AttributeTranslation
     pipeline:
       SaveQuantityStep: {name: U_t}
+  Unit_current_PhysCGS:
+    input_path: "/Units.Unit current in cgs (U_I)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pI}
+  Unit_length_PhysCGS:
+    input_path: "/Units.Unit length in cgs (U_L)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      # Don't need to multiply by h because Swift sets h to 1
+      Math2Step: {equation: "x*y", external: "/Cosmology.Scale-factor"}
+      SaveQuantityStep: {name: U_pL}
+  Unit_mass_PhysCGS:
+    input_path: "/Units.Unit mass in cgs (U_M)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pM}
+  Unit_temperature_PhysCGS:
+    input_path: "/Units.Unit temperature in cgs (U_T)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pT}
+  Unit_time_PhysCGS:
+    input_path: "/Units.Unit time in cgs (U_t)"
+    force_scalar: true
+    type: AttributeTranslation
+    pipeline:
+      # Don't need to multiply by h because Swift sets h to 1
+      Math2Step: {equation: "x*y", external: "/Cosmology.Scale-factor"}
+      SaveQuantityStep: {name: U_pt}
 
 Parameters:
   output_path: /RunInfo/Parameters
