@@ -1,4 +1,4 @@
-from dataclasses import KW_ONLY, dataclass
+from dataclasses import KW_ONLY, InitVar, dataclass, field
 from typing import LiteralString
 
 import h5py
@@ -7,6 +7,7 @@ import numpy as np
 from ..pipeline import NextStep
 from ..translation_base import (
     TranslationContext,
+    TranslationError,
     TranslationStep,
 )
 
@@ -74,8 +75,8 @@ class Math2Step(MathStep):
     """
     Perform basic mathematical expressions on the field value
 
-    This step uses `eval` to evaluate a 2-variable expression, i.e., something
-    like `x**2 * y` or `sin(x) / y`. The external parameter maps to a field
+    This step uses `eval` to evaluate an 2+-variable expression, i.e., something
+    like `x**2 * y` or `sin(x) / y`. The external parameter(s) map to a field
     (dataset or attribute) in the input file, the external_columns specifies
     columns to pick out.
 
@@ -84,35 +85,71 @@ class Math2Step(MathStep):
 
     Attributes
     ----------
-    external: str
-        The path to the external variable (`y`) in standard GUSTEAU field notation
-    external_columns: NDArray | None, optional
+    external: str | list[str]
+        The path to the external variable (`y`) in standard GUSTEAU field notation.
+        If multiple external variables are given, they correspond to additional
+        `y_i` terms in the expression, e.g. `x**2 * y * y1`
+    external_columns: NDArray | list[NDArray | None], optional
         The column(s) to extract.
         For 2D arrays, this is equivalent to `y=external[:, external_columns]`.
         For 1D arrays, this is equivalent to `y=external[external_columns]`.
+
+        If multiple external variables are present, this parameter is evaluated
+        in one of two ways. If given as a single NDArray, it is equivalent to
+        `y=external[0][:, external_columns], y1=external[1][:, external_columns]`.
+        If given as a list of NDArrays, it is equivalent to
+        `y=external[0][:, external_columns[0]],
+        y1=external[1][:, external_columns[1]]`.
+        `external_columns[i] is None` is equivalent to all columns for `external[i]`.
+    force_scalar: bool, optional
+        Attempt to make output a scalar quantity instead of an array
     """
 
     _: KW_ONLY
-    external: str
-    external_columns: np.ndarray | None = None
+    external: InitVar[str | list[str]]
+    external_columns: InitVar[np.ndarray | list[np.ndarray | None] | None] = None
+    force_scalar: bool = False
 
-    def __post_init__(self):
-        self.external_columns = (
-            None
-            if self.external_columns is None
-            else np.array(self.external_columns).squeeze()
-        )
+    _external: list[str] = field(init=False)
+    _columns: list[np.ndarray | None] = field(init=False)
+
+    def __post_init__(
+        self,
+        external: str | list[str],
+        external_columns: np.ndarray | list[np.ndarray | None] | None,
+    ):
+        self._external = [external] if isinstance(external, str) else external
+
+        if external_columns:
+            self._columns = (
+                external_columns
+                if isinstance(external_columns, list)
+                else [external_columns]
+            )
+            self._columns = [
+                np.array(ec).squeeze() if ec else ec for ec in self._columns
+            ]
+        else:
+            self._columns = [None] * len(self._external)
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         x = field.value
-        y = _load_external_field(
-            self.external,
-            self.external_columns,
-            context.infile,
-            skip_data=context.options.skip_data,
-        )
-        field.value = np.array(eval(self.equation)).astype(field.dtype)
+        locals_ = locals()
+        for i, (external, columns) in enumerate(
+            zip(self._external, self._columns, strict=True)
+        ):
+            locals_[f"y{i if i else ''}"] = _load_external_field(
+                external,
+                columns,
+                context.infile,
+                skip_data=context.options.skip_data,
+            )
+        field.value = np.array(eval(self.equation, locals=locals_)).astype(field.dtype)
+        if self.force_scalar:
+            if len(field.value) > 1:
+                raise TranslationError("Attempting to force an array into a scalar!")
+            field.value = field.value[0]
         next_step(context)
 
 
