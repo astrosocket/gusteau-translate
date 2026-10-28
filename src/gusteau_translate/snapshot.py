@@ -91,7 +91,7 @@ def _check_snapshot_glob(
             f"Snapshot glob {snapshot_path} is not specific enough."
             f" It produces non-hdf5 files {bad_files}"
         )
-    base_name = Path(os.path.commonprefix(snapshots))
+    base_name = Path(os.path.commonpath(snapshots))
     virtual_file = Path(f"{base_name.stem}_virtual.hdf5")
     return virtual_file, snapshots
 
