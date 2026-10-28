@@ -387,6 +387,8 @@ class Translation:
     ) -> Iterator[FieldTranslation]:
         for a in group.attrs:
             path = f"{start_path}.{a.name}"
+            if path not in map_:
+                LOGGER.debug(f"Generating field {path} from group spec")
             field = map_.get(path, self._default_translation_factory("attribute", path))
             field._required |= not a.optional
             yield field
@@ -525,7 +527,7 @@ class Translation:
             reqd.extend(
                 (g, f"{group[1]}/{g.name}")
                 for g in group[0].datagroups
-                if isinstance(g, GroupSpec)
+                if isinstance(g, GroupSpec) and not g.optional
             )
 
     def get_header_translations(self) -> Iterator[FieldTranslation]:
