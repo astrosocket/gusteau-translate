@@ -28,7 +28,6 @@ from .config import (
     _default_translation_options,
     _default_validation_options,
 )
-from .optional_steps.packcubes import CubesTranslator
 from .pipeline import ErrorHandler
 from .specification import (
     ValidationError,
@@ -217,36 +216,21 @@ def initialize_particle_groups(
         translation.apply_translation(field, context, error_handler)
 
 
-def _set_cubes_translator(translation: Translation, context: TranslationContext):
-    gusteau = translation.gusteau
-    cubes_translator_name = gusteau.get("cubes_translator")
-    if cubes_translator_name:
-        LOGGER.debug(f"Trying cubes translator: {cubes_translator_name}")
-        cubes_translator = CubesTranslator._subclasses.get(cubes_translator_name)
-        if cubes_translator:
-            LOGGER.debug(f"Setting cubes translator: {cubes_translator_name}")
-            context.cubes_translator = cubes_translator()  # type: ignore
-
-
-def _process_packingcubes(
+def _process_particle_groups(
     context: TranslationContext,
     error_handler: ErrorHandler,
     options: TranslationOptions,
 ):
-    particle_groups = options.packingcubes
-    particle_groups = (
-        context.quantities["Particle_names"]
-        if particle_groups[0] == "*"
-        else particle_groups
-    )
+    particle_groups = context.quantities["Particle_names"]
+
     # ensure particle groups are present
     # (note that this might require translations)
     translation = context.translation
     initialize_particle_groups(particle_groups, context, error_handler)
-    _set_cubes_translator(translation, context)
+    # _set_cubes_translator(translation, context)
     LOGGER.debug(
         f"Prioritizing the Coordinates dataset for the {particle_groups}"
-        " groups for packingcubes processing"
+        " groups for cells, packingcubes processing"
     )
     translation.set_priority_fields(
         **{f"/{pg}/Coordinates": "ParticleDatasetTranslation" for pg in particle_groups}
@@ -433,12 +417,12 @@ class Snapshot:
             create_unit_registry(context)
             set_cosmo_quantities(context)
 
-            if options.packingcubes:
-                _process_packingcubes(
-                    context,
-                    error_handler,
-                    options,
-                )
+            # Prioritize the Coordinates field for all particle groups
+            _process_particle_groups(
+                context,
+                error_handler,
+                options,
+            )
 
             self.directory.update(
                 translation.apply_explicit_translations(
