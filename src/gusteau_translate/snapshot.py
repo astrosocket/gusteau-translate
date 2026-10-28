@@ -18,6 +18,7 @@ from gusteau_translate.translations.misc_translation import SkipTranslation
 
 from .cells import (
     _create_virtual_dataset,
+    create_partfiles,
     generate_cells,
 )
 from .config import (
@@ -374,6 +375,9 @@ class Snapshot:
                 self.multipart_file, Path(new_snapshot_path).parent / self.path
             )
 
+        new_snapshot_path = Path(new_snapshot_path)
+        partfile_paths = create_partfiles(new_snapshot_path, options)
+
         with (
             h5py.File(self.path) as infile,
             h5py.File(
@@ -393,6 +397,7 @@ class Snapshot:
                 translation,
                 dummy_field,
                 cells,
+                partfile_paths,
                 options=options,
             )
 

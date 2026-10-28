@@ -53,6 +53,7 @@ class TranslationContext:
     translation: Translation
     field: FieldTranslation
     cells: Cells
+    partfile_paths: list[Path]
     quantities: dict[str, Any] = dataclasses.field(default_factory=dict)
     options: TranslationOptions = dataclasses.field(
         default_factory=_default_translation_options
