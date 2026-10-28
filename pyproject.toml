@@ -78,6 +78,9 @@ select = [
 ignore = ["F841", "SIM300", "D400","PIE790"]
 unfixable = ["B"]
 
+[tool.ruff.lint.flake8-import-conventions.extend-aliases]
+datetime = "datetime"
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
@@ -110,7 +113,7 @@ numpy = ">=2.4.6, <3"
 h5py = ">=3.16.0, <4"
 
 [tool.pixi.feature.style.dependencies]
-ruff = ">=0.16.2,<0.17"
+ruff = ">=0.17.3,<0.18"
 ty = ">=0.0.70,<0.0.71"
 ryl = ">=0.21.0,<0.22"
 
