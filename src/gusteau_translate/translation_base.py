@@ -10,7 +10,7 @@ from dataclasses import KW_ONLY, dataclass
 from enum import Enum, auto
 from pathlib import Path
 from traceback import TracebackException
-from typing import Any, ClassVar, Protocol, Self, cast
+from typing import Any, ClassVar, Protocol, cast
 
 import h5py
 
@@ -188,12 +188,6 @@ class FieldTranslation[TranslationContext]:
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
 
-    @abstractmethod
-    def load(self, infile: h5py.File) -> Self: ...
-
-    @abstractmethod
-    def save(self, outfile: h5py.File): ...
-
     @property
     def value(self):
         return self._value
@@ -203,8 +197,8 @@ class FieldTranslation[TranslationContext]:
         self._value = new_value
 
     @property
-    @abstractmethod
-    def name(self) -> str: ...
+    def name(self) -> str:
+        return self.log_name
 
     def __hash__(self) -> int:
         return hash(f"{self.input_path}->{self.output_path}")
