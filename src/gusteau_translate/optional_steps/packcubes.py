@@ -20,13 +20,12 @@ from ..translation_base import (
     TranslationContext,
     TranslationStep,
 )
-from ..translations import DatasetTranslation
+from ..translations.dataset_translation import (
+    DatasetTranslation,
+    particle_group_from_output_path,
+)
 
 LOGGER = logging.getLogger(LOGGER_NAME)
-
-
-def particle_group_from_output_path(output_path: str) -> str:
-    return output_path[1:].split("/")[0]
 
 
 @dataclass

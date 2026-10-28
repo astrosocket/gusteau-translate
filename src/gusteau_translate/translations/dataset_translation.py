@@ -53,6 +53,10 @@ type compression_type = (
 )
 
 
+def particle_group_from_output_path(output_path: str) -> str:
+    return output_path[1:].split("/")[0]
+
+
 def _add_options_to_proplist(  # noqa: C901
     *,
     plist: h5py.h5p.PropDCID | None = None,
