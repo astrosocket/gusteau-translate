@@ -1252,6 +1252,38 @@ units = GroupSpec(
     ],
 )
 
+cells = GroupSpec(
+    name="Cells",
+    attrs=[
+        AttributeSpec("Grid_box", str),
+        AttributeSpec("Number_of_grid_cells", integer),
+        AttributeSpec("Number_of_nongrid_cells", integer),
+    ],
+    datagroups=[
+        DatasetSpec("BoundingBoxes", m=6),
+        DatasetSpec("Centres", m="D"),
+        GroupSpec(
+            "Meta-data",
+            attrs=[
+                AttributeSpec("dimension", number, attr_len="D"),
+                AttributeSpec("nr_cells", number, sets_info="C"),
+                AttributeSpec("size", number, attr_len="D"),
+            ],
+        ),
+        GroupSpec("Counts", attrs=[AttributeSpec("Description", str)]),
+        GroupSpec("Files", attrs=[AttributeSpec("Description", str)]),
+        GroupSpec("Indices", attrs=[AttributeSpec("Description", str)]),
+        GroupSpec("MaxPositions", attrs=[AttributeSpec("Description", str)]),
+        GroupSpec("MinPositions", attrs=[AttributeSpec("Description", str)]),
+        GroupSpec("OffsetsInFile", attrs=[AttributeSpec("Description", str)]),
+        GroupSpec(
+            "Trees",
+            attrs=[AttributeSpec("Description", str)],
+            optional=True,
+        ),
+    ],
+)
+
 # Optional Groups
 cubes = GroupSpec(
     name="cubes",
@@ -1544,7 +1576,7 @@ class GUSTEAU:
 
     def __init__(self):
         self.required_tlgs = {
-            tlg.name: tlg for tlg in [header, code, cosmo, runinfo, units]
+            tlg.name: tlg for tlg in [header, cells, code, cosmo, runinfo, units]
         }
         self.optional_tlgs = {tlg.name: tlg for tlg in [cubes]}
 
