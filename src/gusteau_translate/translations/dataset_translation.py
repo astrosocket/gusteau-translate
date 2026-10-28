@@ -1,6 +1,8 @@
+import itertools
 import logging
 import numbers
 import typing
+from collections.abc import Iterator
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, cast
@@ -10,11 +12,12 @@ import h5py._hl.filters
 import numpy as np
 from annotated_types import MaxLen, MultipleOf
 from numpy.typing import ArrayLike, NDArray
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, NonNegativeInt, PositiveInt, computed_field
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
+from ..cells import Cells, _create_virtual_dataset
 from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
@@ -430,6 +433,213 @@ class DatasetLoadStep(LoadStep):
         next_step(context)
 
 
+def _save_dataset_part(
+    field: DatasetTranslation, outfile: h5py.File, *, sub_data: np.ndarray | None = None
+) -> h5py.Dataset:
+    """Save dataset to specified file"""
+
+    sub_data = field.value if sub_data is None else sub_data
+
+    dcpl = _add_options_to_proplist(
+        shape=sub_data.shape,
+        dtype=field.value.dtype,
+        chunks=field.chunks,
+        maxshape=field.maxshape,
+        external=None,
+        compression=field.compression,
+        compression_opts=field.compression_opts,
+        scaleoffset=field.scale_offset_filter,
+        shuffle=field.shuffle_filter,
+        fletcher32=field.fletcher32_filter,
+    )
+    return outfile.create_dataset(name=field.output_path, data=sub_data, dcpl=dcpl)
+
+
+@dataclass
+class Cell:
+    count: NonNegativeInt
+    file: NonNegativeInt
+    index: NonNegativeInt
+    max_pos: np.ndarray
+    min_pos: np.ndarray
+    offset: NonNegativeInt
+
+
+@dataclass
+class CellStructure:
+    counts: np.ndarray
+    files: np.ndarray
+    indices: np.ndarray
+    max_pos: np.ndarray
+    min_pos: np.ndarray
+    offsets: np.ndarray
+
+    @computed_field
+    @property
+    def num_cells(self) -> PositiveInt:
+        """Total number of cells"""
+        return self.counts.shape[0] if self.counts else 1
+
+    def __iter__(self) -> Iterator[Cell]:
+        for count, file, index, max_pos, min_pos, offset in zip(
+            self.counts,
+            self.files,
+            self.indices,
+            self.max_pos,
+            self.min_pos,
+            self.offsets,
+            strict=True,
+        ):
+            yield Cell(
+                count=count,
+                file=file,
+                index=index,
+                max_pos=max_pos,
+                min_pos=min_pos,
+                offset=offset,
+            )
+
+    def __getitem__(self, i: int) -> Cell:
+        return Cell(
+            count=self.counts[i],
+            file=self.files[i],
+            index=self.indices[i],
+            max_pos=self.max_pos[i],
+            min_pos=self.min_pos[i],
+            offset=self.offsets[i],
+        )
+
+    def __setitem__(self, i: int, cell: Cell):
+        self.counts[i] = cell.count
+        self.files[i] = cell.file
+        self.indices[i] = cell.index
+        self.max_pos[i] = cell.max_pos
+        self.min_pos[i] = cell.min_pos
+        self.offsets[i] = cell.offset
+
+    def __len__(self) -> int:
+        return len(self.counts)
+
+
+def _populate_min_max(
+    field: ParticleDatasetTranslation,
+    max_pos: np.ndarray,
+    min_pos: np.ndarray,
+    index_bounds: np.ndarray,
+):
+    if "Coordinates" not in field.output_path:
+        raise TranslationError(
+            f"Attempting to populate min/max positions from {field} instead of"
+            "Coordinates!"
+        )
+    for i, (imin, imax) in enumerate(itertools.pairwise(index_bounds)):
+        if imin == imax:
+            continue
+        sub_data = field.value[imin:imax, :]
+        min_pos[i, :] = np.min(sub_data, axis=0)
+        max_pos[i, :] = np.max(sub_data, axis=0)
+
+
+def _get_cell_structure(
+    field: ParticleDatasetTranslation,
+    outfile: h5py.File,
+    cells: Cells,
+    num_partfiles: int,
+) -> CellStructure:
+    """Get cell structure from output file, creating it if does not exist"""
+    cells_grp = outfile["/Cells"]
+    particle_group = particle_group_from_output_path(field.output_path)
+    if particle_group in cells_grp["Counts"]:
+        return CellStructure(
+            counts=cells_grp["Counts"][particle_group],
+            files=cells_grp["Files"][particle_group],
+            indices=cells_grp["Indices"][particle_group],
+            max_pos=cells_grp["MaxPositions"][particle_group],
+            min_pos=cells_grp["MinPositions"][particle_group],
+            offsets=cells_grp["OffsetsInFile"][particle_group],
+        )
+
+    indices = cells.Indices.setdefault(particle_group, np.atleast_1d(0))
+    index_bounds = np.pad(indices, pad_width=(0, 1), constant_values=len(field.value))
+    counts = np.diff(index_bounds)
+    total = sum(counts)
+    files = np.zeros_like(counts)
+    offsets = np.zeros_like(counts)
+    max_pos = np.full((cells.nr_cells, 3), fill_value=-np.inf, dtype=float)
+    min_pos = np.full_like(max_pos, fill_value=np.inf)
+
+    _populate_min_max(field, max_pos, min_pos, index_bounds)
+
+    particles_per_file = total / num_partfiles
+    file_num = 0
+    running_particle_count = 0
+    for i in range(cells.nr_cells):
+        files[i] = file_num
+        offsets[i] = running_particle_count
+        running_particle_count += counts[i]
+        if running_particle_count > particles_per_file:
+            file_num += 1
+            running_particle_count = 0
+
+    cells_grp["Counts"][particle_group] = counts
+    cells_grp["Files"][particle_group] = files
+    if "Indices" in cells_grp and particle_group not in cells_grp["Indices"]:
+        # Need to ensure packingcubes didn't already save it
+        cells_grp["Indices"][particle_group] = indices
+    cells_grp["MaxPositions"][particle_group] = max_pos
+    cells_grp["MinPositions"][particle_group] = min_pos
+    cells_grp["OffsetsInFile"][particle_group] = offsets
+
+    return CellStructure(
+        counts=counts,
+        files=files,
+        indices=indices,
+        max_pos=max_pos,
+        min_pos=min_pos,
+        offsets=offsets,
+    )
+
+
+def _save_dataset_with_cells(field: DatasetTranslation, context: TranslationContext):
+    """Do the actual dataset saving, including cells and multipart handling"""
+
+    if not isinstance(field, ParticleDatasetTranslation):
+        # No special handling for non-particle datasets, save directly
+        _save_dataset_part(field, context.outfile)
+        return
+
+    num_partfiles = context.options.num_partfiles
+
+    structure = _get_cell_structure(
+        field, context.outfile, context.cells, num_partfiles
+    )
+
+    if num_partfiles == 1:
+        # skip creating the sub_data (which would just be a duplicate of field.value)
+        _save_dataset_part(field, context.outfile)
+        return
+
+    for file_num in range(num_partfiles):
+        cells_in_file = [cell for cell in structure if cell.file == file_num]
+        sub_shape = field.value.shape
+        sub_shape[0] = sum(cell.count for cell in cells_in_file)
+        sub_data = np.empty_like(
+            field.value,
+            shape=sub_shape,
+        )
+        for cell in cells_in_file:
+            sub_data[cell.offset : cell.offset + cell.count] = field.value[
+                cell.index : cell.index + cell.count
+            ]
+
+        with h5py.File(
+            context.partfile_paths[file_num], "a", libver="latest"
+        ) as partfile:
+            _save_dataset_part(field, partfile, sub_data=sub_data)
+
+    _create_virtual_dataset(context.outfile, field.output_path, context.partfile_paths)
+
+
 @dataclass
 class DatasetSaveStep(SaveStep):
     """Save the dataset to field.output_path
@@ -445,26 +655,14 @@ class DatasetSaveStep(SaveStep):
         if not isinstance(field, DatasetTranslation):
             raise TranslationClassError(step=self, field=field)
         LOGGER.debug(f"Saving dataset {field.output_path}")
-        dcpl = _add_options_to_proplist(
-            shape=field.value.shape,
-            dtype=field.value.dtype,
-            chunks=field.chunks,
-            maxshape=field.maxshape,
-            external=None,
-            compression=field.compression,
-            compression_opts=field.compression_opts,
-            scaleoffset=field.scale_offset_filter,
-            shuffle=field.shuffle_filter,
-            fletcher32=field.fletcher32_filter,
-        )
-        context.outfile.create_dataset(
-            name=field.output_path, data=field.value, dcpl=dcpl
-        )
+
+        _save_dataset_with_cells(field, context)
 
         # add source description attribute
         context.outfile[field.output_path].attrs["Source_description"] = (
             field.input_description
         )
+
         field.value = None
         next_step(context)
 
