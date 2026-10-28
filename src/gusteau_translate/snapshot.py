@@ -8,6 +8,7 @@ from traceback import TracebackException
 from typing import Literal, cast
 
 import h5py
+import numpy as np
 import unyt.dimensions as ud
 from natsort import natsorted
 from unyt.array import unyt_quantity
@@ -325,6 +326,29 @@ def _add_cell_translations(translation: Translation, options: TranslationOptions
         )
 
 
+def _fix_header_numbers(outfile: h5py.File, options: TranslationOptions):
+    """Update the NumPart fields and Num_files_per_snapshot"""
+    header = outfile["/Header"].attrs
+
+    header["Num_files_per_snapshot"] = np.int32(options.num_partfiles)
+
+    pt_map = header["Part_type_mapping"]
+    particle_numbers = header["Particle_numbers"]
+
+    NumPart_Total = np.zeros((6,), dtype=np.int32)
+    NumPart_Total_HW = np.zeros_like(NumPart_Total)
+
+    for i, pt in enumerate(pt_map):
+        if pt < 0:
+            continue
+        NumPart_Total[i] = particle_numbers[pt] & 0xFFFF_FFFF
+        NumPart_Total_HW[i] = particle_numbers[pt] >> 32
+
+    header["NumPart_Total"] = NumPart_Total
+    header["NumPart_Total_HW"] = NumPart_Total_HW
+    header["NumPart_ThisFile"] = NumPart_Total.astype(np.uint32)
+
+
 class Snapshot:
     path: Path
     """Path to this snapshot file"""
@@ -412,6 +436,10 @@ class Snapshot:
                     translation.get_required_translations(), context, error_handler
                 )
             )
+
+            # Now we have the header, we need to update it to fix NumPart_ThisFile,
+            # NumPart_Total, NumPart_Total_HW, and Num_files_per_snapshot
+            _fix_header_numbers(outfile, options)
 
             # Now that we have the required group Units, we can make the registry
             create_unit_registry(context)
