@@ -2,7 +2,6 @@ import json
 import logging
 import os
 import tempfile
-from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from traceback import TracebackException
@@ -15,6 +14,12 @@ from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 from unyt.unit_systems import UnitSystem
 
+from gusteau_translate.translations.misc_translation import SkipTranslation
+
+from .cells import (
+    _create_virtual_dataset,
+    generate_cells,
+)
 from .config import (
     LOGGER_NAME,
     TranslationOptions,
@@ -39,63 +44,6 @@ from .translation_base import (
 from .translations import GroupTranslation
 
 LOGGER = logging.getLogger(LOGGER_NAME)
-
-
-@dataclass(frozen=True)
-class _SubDataset:
-    filename: Path
-    shape: tuple[int, ...]
-
-
-def _create_virtual_dataset(
-    virtual: h5py.File, dataset_path: str, file_list: list[Path]
-):
-    """Create a virtual dataset in virtual from the dataset_path in each file
-
-    Parameters
-    ----------
-    virtual: h5py.File
-        The file that will contain the virtual dataset
-    dataset_path: Path
-        The path to the dataset in each file.
-        Must be identical for all files in the list.
-    file_list: list[Path]
-        List of paths to the hdf5 files that contain the subdatasets to be combined.
-    """
-    # Process has 5 steps
-    # 1. Determine the final dimensions and data type of the virtual dataset
-    # 2. Create a VirtualLayout object representing the virtual dataset
-    # 3. Create VirtualSource objects representing each of the subdatasets
-    # 4. Map the VirtualSource objects into slices in the VirtualLayout
-    # 5. Convert the VirtualLayout into a virtual dataset
-    # We will actually do the steps out of order because we don't know a priori
-    # the dimensions of the virtual dataset. What we do know is that all of the
-    # datasets are effectively vertically stacked, i.e. in the 0th dimension.
-    # So we'll start with step 3, reading the metadata of every subdataset to
-    # determine that subdatasets shape and the final dataset's size
-    subdatasets = []
-    dtype = float
-    for filename in file_list:
-        with h5py.File(str(filename), "r") as subfile:
-            shape = subfile[dataset_path].shape
-            subdatasets.append(_SubDataset(filename, shape))
-            dtype = subfile[dataset_path].dtype
-    total_length = sum(s.shape[0] for s in subdatasets)
-    shape = (total_length, *subdatasets[0].shape[1:])
-    LOGGER.debug(
-        f"Creating virtual layout for {dataset_path} with {dtype=} and {shape=}"
-    )
-    layout = h5py.VirtualLayout(
-        shape,
-        dtype,
-    )
-    offset = 0
-    for subds in subdatasets:
-        layout[offset : offset + subds.shape[0], ...] = h5py.VirtualSource(
-            subds.filename, dataset_path, shape=subds.shape
-        )
-    LOGGER.info(f"Creating virtual dataset {dataset_path}")
-    virtual.create_virtual_dataset(dataset_path, layout)
 
 
 def _build_virtual_input_dataset(snapshots: list[Path], virtual_file: Path) -> Path:
@@ -304,6 +252,94 @@ def _process_packingcubes(
     )
 
 
+def _add_cell_translations(translation: Translation, options: TranslationOptions):
+    """Add the translations for the cells group structure"""
+
+    factory = translation._default_translation_factory
+
+    translation.add_field(factory("GroupTranslation", "/Cells/Meta-data"))
+
+    cells_attrs = [
+        ".Grid_box",
+        ".Number_of_grid_cells",
+        ".Number_of_nongrid_cells",
+        "/Meta-data.dimension",
+        "/Meta-data.nr_cells",
+        "/Meta-data.size",
+    ]
+
+    for attr in cells_attrs:
+        name = attr.split(".")[1]
+        field = factory(
+            "CellAttributeTranslation",
+            path=f"/Cells{attr}",
+            input_description="Generated from Cells structure",
+            cell_field=name,
+        )
+        # Since Meta-data needs to keep the hyphen (ANNOYING!)
+        # we need to manually override the normalization
+        field.output_path = f"/Cells{attr}"
+        translation.add_field(field)
+
+    cells_datasets = ["BoundingBoxes", "Centres"]
+    for ds in cells_datasets:
+        translation.add_field(
+            factory(
+                "CellDatasetTranslation",
+                path=f"/Cells/{ds}",
+                input_description="Generated from Cells structure",
+                cell_field=ds,
+            )
+        )
+
+    cells_groups = [
+        "Counts",
+        "Files",
+        "Indices",
+        "MaxPositions",
+        "MinPositions",
+        "OffsetsInFile",
+    ]
+
+    descriptions = [
+        "The number of particles of the particular type",
+        (
+            "The number of the actual file containing the cell's particles."
+            " Only relevant if /Header.Num_files_per_snapshot > 1"
+        ),
+        "The overall cell index into the virtual dataset.",
+        (
+            "Maximum coordinates of the particular particle type for that cell in"
+            " simulation units"
+        ),
+        (
+            "Minimum coordinates of the particular particle type for that cell in"
+            " simulation units"
+        ),
+        "Index to the start of the cell in the file it's stored in",
+    ]
+
+    # packingcubes handles the Trees group
+    translation.add_field(
+        SkipTranslation(output_path="/Cells/Trees", input_description="", input_path="")
+    )
+    translation.add_field(
+        SkipTranslation(
+            output_path="/Cells/Trees.Description", input_description="", input_path=""
+        )
+    )
+
+    for grp, description in zip(cells_groups, descriptions, strict=True):
+        translation.add_field(factory("GroupTranslation", f"/Cells/{grp}"))
+        translation.add_field(
+            factory(
+                "ConstantAttributeTranslation",
+                f"/Cells/{grp}.Description",
+                constant=description,
+            )
+        )
+
+
 class Snapshot:
     path: Path
     """Path to this snapshot file"""
@@ -345,10 +381,19 @@ class Snapshot:
             ) as outfile,
             tempfile.TemporaryDirectory() as tempdir,
         ):
-            # Start with header, since that's most important
+            LOGGER.debug("Initializing cell structure")
+            cells = generate_cells(infile, options)
+            _add_cell_translations(translation, options)
+
             LOGGER.debug("Initializing context")
             context = TranslationContext(
-                infile, outfile, tempdir, translation, dummy_field, options=options
+                infile,
+                outfile,
+                tempdir,
+                translation,
+                dummy_field,
+                cells,
+                options=options,
             )
 
             LOGGER.debug("Initializing error handler")

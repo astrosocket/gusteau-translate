@@ -14,6 +14,7 @@ from typing import Any, ClassVar, Protocol, Self, cast
 
 import h5py
 
+from .cells import Cells
 from .config import LOGGER_NAME, TranslationOptions, _default_translation_options
 from .pipeline import ErrorHandler, NextStep, Pipeline, PipelineError, PipelineStep
 from .specification import GUSTEAU, DatasetSpec, GroupSpec
@@ -51,6 +52,7 @@ class TranslationContext:
     tempdir: str
     translation: Translation
     field: FieldTranslation
+    cells: Cells
     quantities: dict[str, Any] = dataclasses.field(default_factory=dict)
     options: TranslationOptions = dataclasses.field(
         default_factory=_default_translation_options
