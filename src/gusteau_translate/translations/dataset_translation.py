@@ -293,12 +293,12 @@ class ParticleDatasetTranslation(DatasetTranslation):
 
 
 @dataclass
-class ConstantParticleDatasetTranslation(ParticleDatasetTranslation):
+class ConstantDatasetTranslation(DatasetTranslation):
     """Dataset with constant value and copied attributes
 
     Use `like_dataset` (alias for `input_path`) to set the location for attribute,
     compression, chunking, etc. copying. Value will always be array of same
-    length/units/etc. but equal to `constant`
+    length/dtype/etc. but all entries are equal to `constant`
     """
 
     _: KW_ONLY
@@ -322,6 +322,18 @@ class ConstantParticleDatasetTranslation(ParticleDatasetTranslation):
     @value.setter
     def value(self, new_value):
         self._value = new_value
+
+
+@dataclass
+class ConstantParticleDatasetTranslation(
+    ConstantDatasetTranslation, ParticleDatasetTranslation
+):
+    """Particle dataset with constant value and copied attributes
+
+    Use `like_dataset` (alias for `input_path`) to set the location for attribute,
+    compression, chunking, etc. copying. Value will always be array of same
+    length/dtype/etc. but all entries are equal to `constant`
+    """
 
 
 @dataclass
