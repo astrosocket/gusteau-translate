@@ -15,8 +15,6 @@ GUSTEAU:
     # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
     # with case-sensitive set to True
 
-  cubes_translator: SwiftCubesTranslator
-
 
 # The following fields are in GUSTEAU Spec order (header first, then other
 # required groups)
