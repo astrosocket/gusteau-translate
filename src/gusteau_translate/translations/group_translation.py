@@ -77,6 +77,17 @@ class GroupLoadStep(LoadStep):
         next_step(context)
 
 
+def _save_group(outfile: h5py.File, field: GroupTranslation):
+    # using require group instead of create group since it might already
+    # exist
+    group = outfile.require_group(field.output_path)  # add source description attribute
+    group.attrs["Source_description"] = field.input_description
+    if field.description is not None:
+        group.attrs["Description"] = field.description
+    if field.tags is not None:
+        group.attrs["Tags"] = field.tags
+
+
 @dataclass
 class GroupSaveStep(SaveStep):
     """Create the group at field.output_path"""
@@ -84,16 +95,15 @@ class GroupSaveStep(SaveStep):
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = cast(GroupTranslation, context.field)
         LOGGER.debug(f"Saving group {field.output_path}")
-        # using require group instead of create group since it might already
-        # exist
-        group = context.outfile.require_group(
-            field.output_path
-        )  # add source description attribute
-        group.attrs["Source_description"] = field.input_description
-        if field.description is not None:
-            group.attrs["Description"] = field.description
-        if field.tags is not None:
-            group.attrs["Tags"] = field.tags
+
+        _save_group(context.outfile, field)
+
+        if context.options.num_partfiles > 1:
+            # only do this if we actually have more than one output file
+            for partfile_path in context.partfile_paths:
+                with h5py.File(partfile_path, "a") as outfile:
+                    _save_group(outfile, field)
+
         next_step(context)
 
 
