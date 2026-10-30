@@ -6,6 +6,7 @@ from dataclasses import KW_ONLY, InitVar, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+import h5py
 import numpy as np
 
 from ..base_steps.base import LoadStep, SaveStep
@@ -213,23 +214,41 @@ class AttributeLoadStep(LoadStep):
         next_step(context)
 
 
+def _save_attribute(outfile: h5py.File, field: FieldTranslation) -> tuple[str, str]:
+    outpath = field.output_path.split(".")
+    path = outpath[0]
+    name = outpath[1]
+    if path not in outfile:
+        msg = f"{path} not present. Cannot save attribute on nonexistent object"
+        if field._required:
+            raise TranslationError(msg)
+        LOGGER.warning(msg)
+        return path, name
+    outfile[path].attrs[name] = field.value
+    return path, name
+
+
 @dataclass
 class AttributeSaveStep(SaveStep):
     """Save the value to field.output_path"""
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
-        outpath = field.output_path.split(".")
-        path = outpath[0]
-        name = outpath[1]
-        if path not in context.outfile:
-            msg = f"{path} not present. Cannot save attribute on nonexistent object"
-            if field._required:
-                raise TranslationError(msg)
-            LOGGER.warning(msg)
-            return
+
+        path, name = _save_attribute(context.outfile, field)
         LOGGER.debug(f"Saving attribute {name}={field.value} on {path}")
-        context.outfile[path].attrs[name] = field.value
+
+        if (
+            context.options.num_partfiles > 1
+            and field.output_path != "/Header.File_index"
+        ):
+            # only do this if we actually have more than one output file and this
+            # isn't the file index
+            # We skip the file index because it's already been written out
+            for partfile_path in context.partfile_paths:
+                with h5py.File(partfile_path, "a") as outfile:
+                    _save_attribute(outfile, field)
+
         field.value = None
         next_step(context)
 
