@@ -2,7 +2,6 @@ import itertools
 import logging
 import numbers
 import typing
-from collections.abc import Iterator
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, cast
@@ -12,12 +11,12 @@ import h5py._hl.filters
 import numpy as np
 from annotated_types import MaxLen, MultipleOf
 from numpy.typing import ArrayLike, NDArray
-from pydantic import BaseModel, NonNegativeInt, PositiveInt, computed_field
+from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
-from ..cells import CellsMetadata, _create_virtual_dataset
+from ..cells import CellsMetadata, CellStructure, _create_virtual_dataset
 from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
@@ -460,72 +459,6 @@ def _save_dataset_part(
         fletcher32=field.fletcher32_filter,
     )
     return outfile.create_dataset(name=field.output_path, data=sub_data, dcpl=dcpl)
-
-
-@dataclass
-class Cell:
-    count: NonNegativeInt
-    file: NonNegativeInt
-    index: NonNegativeInt
-    max_pos: np.ndarray
-    min_pos: np.ndarray
-    offset: NonNegativeInt
-
-
-@dataclass
-class CellStructure:
-    counts: np.ndarray
-    files: np.ndarray
-    indices: np.ndarray
-    max_pos: np.ndarray
-    min_pos: np.ndarray
-    offsets: np.ndarray
-
-    @computed_field
-    @property
-    def num_cells(self) -> PositiveInt:
-        """Total number of cells"""
-        return self.counts.shape[0] if self.counts else 1
-
-    def __iter__(self) -> Iterator[Cell]:
-        for count, file, index, max_pos, min_pos, offset in zip(
-            self.counts,
-            self.files,
-            self.indices,
-            self.max_pos,
-            self.min_pos,
-            self.offsets,
-            strict=True,
-        ):
-            yield Cell(
-                count=count,
-                file=file,
-                index=index,
-                max_pos=max_pos,
-                min_pos=min_pos,
-                offset=offset,
-            )
-
-    def __getitem__(self, i: int) -> Cell:
-        return Cell(
-            count=self.counts[i],
-            file=self.files[i],
-            index=self.indices[i],
-            max_pos=self.max_pos[i],
-            min_pos=self.min_pos[i],
-            offset=self.offsets[i],
-        )
-
-    def __setitem__(self, i: int, cell: Cell):
-        self.counts[i] = cell.count
-        self.files[i] = cell.file
-        self.indices[i] = cell.index
-        self.max_pos[i] = cell.max_pos
-        self.min_pos[i] = cell.min_pos
-        self.offsets[i] = cell.offset
-
-    def __len__(self) -> int:
-        return len(self.counts)
 
 
 def _populate_min_max(

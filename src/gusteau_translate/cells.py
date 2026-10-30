@@ -1,7 +1,8 @@
 # Module for working with the cell structures and virtual datasets
-
+from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -114,6 +115,72 @@ class CellsMetadata:
     def nr_cells(self) -> PositiveInt:
         """Total number of cells"""
         return self.Number_of_grid_cells + self.Number_of_nongrid_cells
+
+
+@dataclass
+class Cell:
+    count: NonNegativeInt
+    file: NonNegativeInt
+    index: NonNegativeInt
+    max_pos: np.ndarray
+    min_pos: np.ndarray
+    offset: NonNegativeInt
+
+
+@dataclass
+class CellStructure:
+    counts: np.ndarray
+    files: np.ndarray
+    indices: np.ndarray
+    max_pos: np.ndarray
+    min_pos: np.ndarray
+    offsets: np.ndarray
+
+    @computed_field
+    @property
+    def num_cells(self) -> PositiveInt:
+        """Total number of cells"""
+        return self.counts.shape[0] if self.counts else 1
+
+    def __iter__(self) -> Iterator[Cell]:
+        for count, file, index, max_pos, min_pos, offset in zip(
+            self.counts,
+            self.files,
+            self.indices,
+            self.max_pos,
+            self.min_pos,
+            self.offsets,
+            strict=True,
+        ):
+            yield Cell(
+                count=count,
+                file=file,
+                index=index,
+                max_pos=max_pos,
+                min_pos=min_pos,
+                offset=offset,
+            )
+
+    def __getitem__(self, i: int) -> Cell:
+        return Cell(
+            count=self.counts[i],
+            file=self.files[i],
+            index=self.indices[i],
+            max_pos=self.max_pos[i],
+            min_pos=self.min_pos[i],
+            offset=self.offsets[i],
+        )
+
+    def __setitem__(self, i: int, cell: Cell):
+        self.counts[i] = cell.count
+        self.files[i] = cell.file
+        self.indices[i] = cell.index
+        self.max_pos[i] = cell.max_pos
+        self.min_pos[i] = cell.min_pos
+        self.offsets[i] = cell.offset
+
+    def __len__(self) -> int:
+        return len(self.counts)
 
 
 def _get_presorted_indices(particle_group: str, infile: h5py.File) -> np.ndarray:
