@@ -490,14 +490,7 @@ def _get_cell_structure(
     cells_grp = outfile["/Cells"]
     particle_group = particle_group_from_output_path(field.output_path)
     if particle_group in cells_grp["Counts"]:
-        return CellStructure(
-            counts=cells_grp["Counts"][particle_group],
-            files=cells_grp["Files"][particle_group],
-            indices=cells_grp["Indices"][particle_group],
-            max_pos=cells_grp["MaxPositions"][particle_group],
-            min_pos=cells_grp["MinPositions"][particle_group],
-            offsets=cells_grp["OffsetsInFile"][particle_group],
-        )
+        return CellStructure.from_cells_group(cells_grp, particle_group)
 
     indices = cells.Indices.setdefault(particle_group, np.atleast_1d(0))
     index_bounds = np.pad(indices, pad_width=(0, 1), constant_values=len(field.value))

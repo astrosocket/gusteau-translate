@@ -116,6 +116,24 @@ class CellsMetadata:
         """Total number of cells"""
         return self.Number_of_grid_cells + self.Number_of_nongrid_cells
 
+    @staticmethod
+    def from_cells_group(
+        cells_grp: h5py.Group,
+    ) -> CellsMetadata:
+        cg_attrs = cells_grp.attrs
+        md_attrs = cells_grp["Meta-data"].attrs
+        return CellsMetadata(
+            Grid_box=cg_attrs["Grid_box"],
+            Number_of_grid_cells=cg_attrs["Number_of_grid_cells"],
+            Number_of_nongrid_cells=cg_attrs["Number_of_nongrid_cells"],
+            dimension=md_attrs["dimension"],
+            size=md_attrs["size"],
+            BoundingBoxes=cells_grp["BoundingBoxes"][:],
+            Centres=cells_grp["Centres"][:],
+            needs_updating=REPLACEMENT_TYPE.NONE,
+            Indices={},
+        )
+
 
 @dataclass
 class Cell:
@@ -181,6 +199,27 @@ class CellStructure:
 
     def __len__(self) -> int:
         return len(self.counts)
+
+    @staticmethod
+    def from_cells_group(cells_grp: h5py.Group, particle_type: str) -> CellStructure:
+        return CellStructure(
+            counts=cells_grp["Counts"][particle_type][:],
+            files=cells_grp["Files"][particle_type][:],
+            indices=cells_grp["Indices"][particle_type][:],
+            max_pos=cells_grp["MaxPositions"][particle_type][:],
+            min_pos=cells_grp["MinPositions"][particle_type][:],
+            offsets=cells_grp["OffsetsInFile"][particle_type][:],
+        )
+
+    def to_cells_group(
+        self, cells_grp: h5py.Group, particle_type: str, mask: np.ndarray
+    ):
+        cells_grp["Counts"][particle_type] = self.counts[mask]
+        cells_grp["Files"][particle_type] = self.files[mask]
+        cells_grp["Indices"][particle_type] = self.indices[mask]
+        cells_grp["MaxPositions"][particle_type] = self.max_pos[mask, :]
+        cells_grp["MinPositions"][particle_type] = self.min_pos[mask, :]
+        cells_grp["OffsetsInFile"][particle_type] = self.offsets[mask]
 
 
 def _get_presorted_indices(particle_group: str, infile: h5py.File) -> np.ndarray:
