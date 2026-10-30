@@ -562,7 +562,7 @@ def _save_dataset_with_cells(field: DatasetTranslation, context: TranslationCont
     for file_num in range(num_partfiles):
         cells_in_file = [cell for cell in structure if cell.file == file_num]
         sub_shape = field.value.shape
-        sub_shape[0] = sum(cell.count for cell in cells_in_file)
+        sub_shape = (sum(cell.count for cell in cells_in_file), *sub_shape[1:])
         sub_data = np.empty_like(
             field.value,
             shape=sub_shape,
