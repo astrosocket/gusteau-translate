@@ -374,8 +374,12 @@ class DatasetLoadStep(LoadStep):
             else indata[:max_index, field.columns],
             dtype=new_type,
         )
+
+        # default to gzip compression if none applied
+        in_compression = "gzip" if indata.compression is None else indata.compression
+
         field.compression = (
-            cast(str | None, indata.compression)
+            cast(str | None, in_compression)
             if field.compression is None
             else field.compression
         )
@@ -406,8 +410,11 @@ class DatasetLoadStep(LoadStep):
             if field.fletcher32_filter is None
             else field.fletcher32_filter
         )
+
+        in_chunks = True if indata.chunks is None else indata.chunks
+
         field.chunks = (
-            cast(tuple[int, ...] | None, indata.chunks)
+            cast(tuple[int, ...] | None, in_chunks)
             if field.chunks is None
             else field.chunks
         )
