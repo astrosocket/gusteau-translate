@@ -389,7 +389,7 @@ class Snapshot:
         with (
             h5py.File(self.path) as infile,
             h5py.File(
-                new_snapshot_path, "w", libver="v200", track_order=True
+                new_snapshot_path, "a", libver="v200", track_order=True
             ) as outfile,
             tempfile.TemporaryDirectory() as tempdir,
         ):

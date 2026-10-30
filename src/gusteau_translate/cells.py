@@ -602,9 +602,16 @@ def create_partfiles(snapshot_path: Path, options: TranslationOptions) -> list[P
     for i in range(options.num_partfiles):
         partfile_path = _gen_partfile_path(snapshot_path, i, options.num_partfiles)
         with h5py.File(
-            partfile_path, "a", libver="latest", track_order=True
+            partfile_path, "w", libver="latest", track_order=True
         ) as partfile:
             header = partfile.require_group("Header")
             header.attrs["File_index"] = i if options.num_partfiles > 1 else -1
         partfile_paths.append(partfile_path)
+    if options.num_partfiles > 1:
+        with h5py.File(
+            snapshot_path, "w", libver="latest", track_order=True
+        ) as main_file:
+            header = main_file.require_group("Header")
+            header.attrs["File_index"] = -1
+
     return partfile_paths
