@@ -87,7 +87,7 @@ class REPLACEMENT_TYPE(Enum):
 
 
 @dataclass
-class Cells:
+class CellsMetadata:
     Grid_box: np.ndarray
     """Bounding box of the grid"""
     BoundingBoxes: np.ndarray
@@ -147,7 +147,7 @@ def _get_presorted_indices(particle_group: str, infile: h5py.File) -> np.ndarray
     )
 
 
-def _parse_swift_cell_structure(infile: h5py.File) -> Cells | None:
+def _parse_swift_cell_structure(infile: h5py.File) -> CellsMetadata | None:
     """Parse infile for a Swift-style cells structure
 
     A Swift-like cells structure has the following:
@@ -228,7 +228,7 @@ def _parse_swift_cell_structure(infile: h5py.File) -> Cells | None:
 
     Indices = {str(k): _get_presorted_indices(k, infile) for k in cell_group["Counts"]}
 
-    return Cells(
+    return CellsMetadata(
         Grid_box=Grid_box,
         Number_of_grid_cells=Number_of_grid_cells,
         Number_of_nongrid_cells=Number_of_nongrid_cells,
@@ -254,7 +254,7 @@ def _parse_swift_cell_structure(infile: h5py.File) -> Cells | None:
 #             context.cubes_translator = cubes_translator()
 
 
-def parse_cell_structure(infile: h5py.File) -> Cells | None:
+def parse_cell_structure(infile: h5py.File) -> CellsMetadata | None:
     """Attempt to parse the cell structure for various structure types"""
     for methods in [_parse_swift_cell_structure]:
         cells = methods(infile)
@@ -263,7 +263,7 @@ def parse_cell_structure(infile: h5py.File) -> Cells | None:
     return None
 
 
-def _make_single_cell() -> Cells:
+def _make_single_cell() -> CellsMetadata:
     """Make cell structure that is only a single cell
 
     Generated cell structure is 3D.
@@ -280,7 +280,7 @@ def _make_single_cell() -> Cells:
     dimension = np.array([1, 1, 1])
     size = np.ones((3,), dtype=float)
 
-    return Cells(
+    return CellsMetadata(
         Grid_box=Grid_box,
         Number_of_grid_cells=Number_of_grid_cells,
         Number_of_nongrid_cells=Number_of_nongrid_cells,
@@ -293,7 +293,7 @@ def _make_single_cell() -> Cells:
     )
 
 
-def _make_packingcubes_cells(options: TranslationOptions) -> Cells:
+def _make_packingcubes_cells(options: TranslationOptions) -> CellsMetadata:
     """Make cell structure that is cube with N cells on a side
 
     Uses the grid box if available, but note that generated cell structure is 3D.
@@ -348,7 +348,7 @@ def _make_packingcubes_cells(options: TranslationOptions) -> Cells:
 
     dimension = np.array([n, n, n])
 
-    return Cells(
+    return CellsMetadata(
         Grid_box=Grid_box,
         Number_of_grid_cells=Number_of_grid_cells,
         Number_of_nongrid_cells=Number_of_nongrid_cells,
@@ -361,7 +361,7 @@ def _make_packingcubes_cells(options: TranslationOptions) -> Cells:
     )
 
 
-def generate_cells(infile: h5py.File, options: TranslationOptions) -> Cells:
+def generate_cells(infile: h5py.File, options: TranslationOptions) -> CellsMetadata:
     """Generate the cells structure"""
     cells = _parse_swift_cell_structure(infile)
     if cells and not options.packingcubes:
@@ -374,7 +374,7 @@ def generate_cells(infile: h5py.File, options: TranslationOptions) -> Cells:
     )
 
 
-def update_cells(cells: Cells, outfile: h5py.File):
+def update_cells(cells: CellsMetadata, outfile: h5py.File):
     """Update the Cells object based on the value of needs_updating
 
     Note that this will fix the dimensionality issue for cases where
@@ -419,20 +419,20 @@ def update_cells(cells: Cells, outfile: h5py.File):
     cells.needs_updating = REPLACEMENT_TYPE.NONE
 
 
-def write_cells(cells: Cells, outfile: h5py.File):
+def write_cells(cells_meta: CellsMetadata, outfile: h5py.File):
     """Write out the cells structure"""
     cell_group = outfile.require_group("/Cells")
     cell_attrs = cell_group.attrs
-    cell_attrs["Grid_box"] = cells.Grid_box
-    cell_attrs["Number_of_grid_cells"] = cells.Number_of_grid_cells
-    cell_attrs["Number_of_nongrid_cells"] = cells.Number_of_nongrid_cells
-    cell_group["BoundingBoxes"] = cells.BoundingBoxes
-    cell_group["Centres"] = cells.Centres
+    cell_attrs["Grid_box"] = cells_meta.Grid_box
+    cell_attrs["Number_of_grid_cells"] = cells_meta.Number_of_grid_cells
+    cell_attrs["Number_of_nongrid_cells"] = cells_meta.Number_of_nongrid_cells
+    cell_group["BoundingBoxes"] = cells_meta.BoundingBoxes
+    cell_group["Centres"] = cells_meta.Centres
     meta = cell_group.require_group("Meta-data")
     meta_attrs = meta.attrs
-    meta_attrs["dimension"] = cells.dimension
-    meta_attrs["nr_cells"] = cells.nr_cells
-    meta_attrs["size"] = cells.size
+    meta_attrs["dimension"] = cells_meta.dimension
+    meta_attrs["nr_cells"] = cells_meta.nr_cells
+    meta_attrs["size"] = cells_meta.size
     counts_grp = cell_group.require_group("Counts")
     counts_grp.attrs["Description"] = "The number of particles of the particular type"
     files_grp = cell_group.require_group("Files")
@@ -458,14 +458,6 @@ def write_cells(cells: Cells, outfile: h5py.File):
     off_grp.attrs["Description"] = (
         "Index to the start of the cell in the file it's stored in"
     )
-    if cells.nr_cells == 1:
-        header = outfile["/Header"].attrs
-        names = header["Particle_names"]
-        for i, name in enumerate(names):
-            counts_grp[name] = np.atleast_1d(header["Particle_numbers"][i])
-            files_grp[name] = np.atleast_1d(0)
-            indices_grp[name] = np.atleast_1d(0)
-            off_grp[name] = np.atleast_1d(0)
 
 
 def _gen_partfile_path(snapshot_path: Path, index: int, num_files: int) -> Path:

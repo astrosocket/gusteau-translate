@@ -394,7 +394,7 @@ class Snapshot:
             tempfile.TemporaryDirectory() as tempdir,
         ):
             LOGGER.debug("Initializing cell structure")
-            cells = generate_cells(infile, options)
+            cells_meta = generate_cells(infile, options)
             _add_cell_translations(translation, options)
 
             LOGGER.debug("Initializing context")
@@ -404,7 +404,7 @@ class Snapshot:
                 tempdir,
                 translation,
                 dummy_field,
-                cells,
+                cells_meta,
                 partfile_paths,
                 options=options,
             )

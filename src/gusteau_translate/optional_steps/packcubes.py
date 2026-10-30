@@ -11,7 +11,7 @@ import packingcubes.bounding_box
 import packingcubes.cubes.cubes_numba
 from numpy.typing import NDArray
 
-from ..cells import Cells
+from ..cells import CellsMetadata
 from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
@@ -35,14 +35,14 @@ class CubesParts:
 
 
 def _compute_cell_indices(
-    dataset: packingcubes.data_objects.MultiParticleDataset, cells: Cells
+    dataset: packingcubes.data_objects.MultiParticleDataset, cells_meta: CellsMetadata
 ) -> NDArray:
     """Use packingcubes to generate cell indices and sort particles"""
 
     data_container = dataset.data_container
-    box = packingcubes.bounding_box.make_bounding_box(cells.Grid_box)
+    box = packingcubes.bounding_box.make_bounding_box(cells_meta.Grid_box)
     cube_indices = packingcubes.cubes.cubes_numba.cube(
-        data_container, cells.dimension[0], box
+        data_container, cells_meta.dimension[0], box
     )
     # check cube sizes
     if np.any(np.diff(cube_indices[:-1]) >= 2**32):

@@ -17,7 +17,7 @@ from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
-from ..cells import Cells, _create_virtual_dataset
+from ..cells import CellsMetadata, _create_virtual_dataset
 from ..config import LOGGER_NAME
 from ..pipeline import NextStep
 from ..translation_base import (
@@ -550,7 +550,7 @@ def _populate_min_max(
 def _get_cell_structure(
     field: ParticleDatasetTranslation,
     outfile: h5py.File,
-    cells: Cells,
+    cells: CellsMetadata,
     num_partfiles: int,
 ) -> CellStructure:
     """Get cell structure from output file, creating it if does not exist"""

@@ -14,7 +14,7 @@ from typing import Any, ClassVar, Protocol, cast
 
 import h5py
 
-from .cells import Cells
+from .cells import CellsMetadata
 from .config import LOGGER_NAME, TranslationOptions, _default_translation_options
 from .pipeline import ErrorHandler, NextStep, Pipeline, PipelineError, PipelineStep
 from .specification import GUSTEAU, DatasetSpec, GroupSpec
@@ -52,7 +52,7 @@ class TranslationContext:
     tempdir: str
     translation: Translation
     field: FieldTranslation
-    cells: Cells
+    cells: CellsMetadata
     partfile_paths: list[Path]
     quantities: dict[str, Any] = dataclasses.field(default_factory=dict)
     options: TranslationOptions = dataclasses.field(
