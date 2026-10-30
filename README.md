@@ -50,6 +50,14 @@ The output file will be then validated against the GUSTEAU specification.
 
 You can optionally skip the validation or translation steps by passing `--to/--translate-only` or `--vo/--validate-only`, if, e.g., you are testing GUSTEAU creation directly.
 
+> [!NOTE]
+> Multipart _input_ files that do not use virtual datasets should be specified via a psuedo-glob pattern.
+> For example, if you have `snapshot_XXX.0.hdf5`, `snapshot_XXX.1.hdf5`, etc., you would specify the input file as `snapshot_XXX` (notice no .0, .hdf5).
+>
+> Mulitpart _output_ files can be specified via the `--num-partfiles` option, which will produce `$num_partfiles + 1` outputs.
+> The output files will look like `output.hdf5`, `output.0.hdf5`, `output.1.hdf5`, etc. 
+> `output.hdf5` will contain virtual datasets comprised of the datasets in the partfiles.
+
 As always, you can specify `--help` to get the available options.
 
 ### Including `packingcubes`
@@ -64,13 +72,10 @@ The contribution to the final snapshot size should be pretty minimal though; an 
 
 The current available styles are
 
-- `swift-eagle` - for converting [SWIFT](https://swift.strw.leidenuniv.nl/)-style snapshots
+- `swift-eagle` - for converting [SWIFT](https://swift.strw.leidenuniv.nl/)-style snapshots[^swift-style]
 - `illustrisTNG` - for converting [IllustrisTNG](www.tng-project.org/)-style snapshots
 
-> [!NOTE]
-> Multipart snapshots (i.e. where the snapshot is spread across multiple files, like snapshot_001.0.hdf5, snapshot_001.1.hdf5, etc) are not yet supported.
-> This is a high-priority feature and is expected soon.
 
-This style was built off of the snapshots from the EAGLE simulation as found at [CAMELS](https://camels.readthedocs.io) and so is based on SWIFT v1.0.0
 
 [^alchemize]: `gusteau-alchemize` and `gusteau-translate` also map to the same command.
+[^swift-style]: This style was built off of the snapshots from the EAGLE simulation as found at [CAMELS](https://camels.readthedocs.io) and so is based on SWIFT v1.0.0
