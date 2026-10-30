@@ -350,6 +350,7 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
         packingcubes=pc_options.particle_types if args.packingcubes else [],
         force_overwrite=bool(args.force_overwrite),
         skip_data=bool(args.skip_data),
+        num_partfiles=args.num_partfiles,
         pc_options=pc_options,
     )
     LOGGER.info(f"Loaded translation options: {options}")
