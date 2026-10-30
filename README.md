@@ -5,7 +5,7 @@
 
 <!--- Tests and style --->
 
-[![Tested with Hypothesis](https://img.shields.io/badge/hypothesis-tested-brightgreen.svg)](https://hypothesis.readthedocs.io/)
+<!-- [![Tested with Hypothesis](https://img.shields.io/badge/hypothesis-tested-brightgreen.svg)](https://hypothesis.readthedocs.io/) -->
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/charliermarsh/ruff)
 
 Demo translation software for Project GUSTEAU
@@ -31,6 +31,7 @@ Python versions outside this range may work, but their usage is not supported, a
 - `tomlkit` - required for reading toml-based style files
 - `ruamel-yaml` - required for reading yaml-based style files
 - `pydantic` - required for validating translations
+- `natsort` - required for correctly handling multipart files
 - `packingcubes` - required for sorting the data and generating the packingcubes structure.
   Note that `packingcubes` is lazily imported in python 3.15+, so while it is not yet an optional package, it will be in the future.
 
