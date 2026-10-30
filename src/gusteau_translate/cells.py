@@ -566,14 +566,34 @@ def write_cells(cells_meta: CellsMetadata, outfile: h5py.File, mask: np.ndarray)
     )
 
 
+def pad_number(index: int, total: int) -> str:
+    """
+    Pad index with appropriate number of zeros
+
+    Parameters
+    ----------
+    index: int
+        The index to pad
+
+    total: int
+        The total number of indices
+
+    Returns
+    -------
+    :
+        The padded index as a string
+
+    """
+    # copied from packingcubes
+    return f"{index}".zfill(int(np.ceil(np.log10(total))))
+
+
 def _gen_partfile_path(snapshot_path: Path, index: int, num_files: int) -> Path:
     """Generate the path for partfile with index"""
     if num_files == 1:
         return snapshot_path
     stem = snapshot_path.stem
-    return snapshot_path.with_stem(
-        f"{stem}_{index}".zfill(np.ceil(np.log10(num_files), dtype=int))
-    )
+    return snapshot_path.with_stem(f"{stem}.{pad_number(index, num_files)}")
 
 
 def create_partfiles(snapshot_path: Path, options: TranslationOptions) -> list[Path]:
