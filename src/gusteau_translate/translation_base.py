@@ -520,11 +520,21 @@ class Translation:
                 out_fields.append(field.input_path)
         return out_fields
 
-    def initialize_required_groups(self, outfile: h5py.File):
+    def initialize_required_groups(
+        self, outfile: h5py.File, partfile_paths: list[Path]
+    ):
         reqd = [(g, g.name) for g in Translation._SPEC.required_tlgs.values()]
         while reqd:
             group = reqd.pop()
-            outfile.create_group(name=group[1], track_order=True)
+            outfile.require_group(name=group[1])
+
+            # need to initialize in all multipart files too, if num_multipart>1
+            for partfile_path in partfile_paths:
+                with h5py.File(partfile_path, "a") as partfile:
+                    partfile.require_group(
+                        name=group[1],
+                    )
+
             reqd.extend(
                 (g, f"{group[1]}/{g.name}")
                 for g in group[0].datagroups

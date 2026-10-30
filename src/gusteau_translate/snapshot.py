@@ -413,7 +413,9 @@ class Snapshot:
             error_handler = translation_error_handler
 
             LOGGER.debug("Creating required groups in outfile")
-            translation.initialize_required_groups(outfile)
+            translation.initialize_required_groups(
+                outfile, partfile_paths if options.num_partfiles > 1 else []
+            )
 
             # Order of translations:
             #  1. Explicit transformations
