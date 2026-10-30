@@ -525,15 +525,15 @@ def update_cells(cells: CellsMetadata, outfile: h5py.File):
     cells.needs_updating = REPLACEMENT_TYPE.NONE
 
 
-def write_cells(cells_meta: CellsMetadata, outfile: h5py.File):
+def write_cells(cells_meta: CellsMetadata, outfile: h5py.File, mask: np.ndarray):
     """Write out the cells structure"""
     cell_group = outfile.require_group("/Cells")
     cell_attrs = cell_group.attrs
     cell_attrs["Grid_box"] = cells_meta.Grid_box
     cell_attrs["Number_of_grid_cells"] = cells_meta.Number_of_grid_cells
     cell_attrs["Number_of_nongrid_cells"] = cells_meta.Number_of_nongrid_cells
-    cell_group["BoundingBoxes"] = cells_meta.BoundingBoxes
-    cell_group["Centres"] = cells_meta.Centres
+    cell_group["BoundingBoxes"] = cells_meta.BoundingBoxes[mask, :]
+    cell_group["Centres"] = cells_meta.Centres[mask, :]
     meta = cell_group.require_group("Meta-data")
     meta_attrs = meta.attrs
     meta_attrs["dimension"] = cells_meta.dimension
