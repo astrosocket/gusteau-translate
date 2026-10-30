@@ -19,6 +19,7 @@ from gusteau_translate.translations.misc_translation import SkipTranslation
 
 from .cells import (
     _create_virtual_dataset,
+    copy_cell_structure_to_partfiles,
     create_partfiles,
     generate_cells,
 )
@@ -512,6 +513,8 @@ class Snapshot:
 
             LOGGER.info("Performing any remaining translations")
             translation.apply_unused_translations(context, error_handler)
+
+            copy_cell_structure_to_partfiles(outfile, partfile_paths)
 
             LOGGER.info("Writing /.Metadata attribute")
             _create_field_metadata(outfile)

@@ -615,3 +615,35 @@ def create_partfiles(snapshot_path: Path, options: TranslationOptions) -> list[P
             header.attrs["File_index"] = -1
 
     return partfile_paths
+
+
+def copy_cell_structure_to_partfiles(outfile: h5py.File, partfile_paths: list[Path]):
+    """Copy cell structure from the primary outfile to the partfiles"""
+    if len(partfile_paths) <= 1:
+        return
+    LOGGER.info("Copying cells structure from primary file to partfiles")
+    cells_grp = outfile["/Cells"]
+    particle_types = list(cells_grp["Counts"])
+    cell_meta = CellsMetadata.from_cells_group(cells_grp)
+    num_cells = cell_meta.nr_cells
+    for i, partfile_path in enumerate(partfile_paths):
+        with h5py.File(partfile_path, "a") as partfile:
+            partcells_grp = partfile["/Cells"]
+            for particle_type in particle_types:
+                cell_structure = CellStructure.from_cells_group(
+                    cells_grp, particle_type
+                )
+                mask = cell_structure.files == i
+                cell_structure.to_cells_group(partcells_grp, particle_type, mask)
+                if "Trees" in cells_grp:
+                    partcells_grp.require_group("Trees")
+                    for j in np.where(mask)[0]:
+                        tree_name = (
+                            f"Trees/{particle_type}/tree_{pad_number(j, num_cells)}"
+                        )
+                        partcells_grp[tree_name] = cells_grp[tree_name][:]
+                    tree_attrs = cells_grp["Trees"].attrs
+                    part_tree_attrs = partcells_grp["Trees"].attrs
+                    for attr, value in tree_attrs.items():
+                        part_tree_attrs[attr] = value
+            write_cells(cell_meta, partfile, mask)
