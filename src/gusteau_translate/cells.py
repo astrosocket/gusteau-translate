@@ -487,6 +487,6 @@ def create_partfiles(snapshot_path: Path, options: TranslationOptions) -> list[P
             partfile_path, "a", libver="latest", track_order=True
         ) as partfile:
             header = partfile.require_group("Header")
-            header.attrs["ThisFile"] = i
+            header.attrs["File_index"] = i if options.num_partfiles > 1 else -1
         partfile_paths.append(partfile_path)
     return partfile_paths

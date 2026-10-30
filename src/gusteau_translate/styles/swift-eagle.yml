@@ -71,6 +71,10 @@ Header:
     type: AttributeTranslation
     pipeline:
       SaveQuantityStep: {name: z}
+  ThisFile:
+    output_path: /Header.File_index
+    # We skip this field because we would need to remake it anyway
+    type: SkipTranslation
   # Gadget-2 header fields
   # Several of these need to be tweaked because they include neutrinos as a
   # seventh species

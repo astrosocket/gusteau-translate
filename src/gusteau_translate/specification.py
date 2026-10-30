@@ -1145,6 +1145,7 @@ header = GroupSpec(
         AttributeSpec("Part_type_mapping", num_str_array, 6),
         AttributeSpec("Snapshot_date", str),
         AttributeSpec("Redshift", number),
+        AttributeSpec("File_index", integer, sets_info="File_index"),
         # Gadget-2 header fields not already included
         AttributeSpec("NumPart_ThisFile", (np.ndarray, np.uint32), 6),
         AttributeSpec("MassTable", (np.ndarray, np.float64), 6),

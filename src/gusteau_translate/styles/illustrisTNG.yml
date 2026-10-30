@@ -78,6 +78,10 @@ Header:
     type: AttributeTranslation
     pipeline:
       SaveQuantityStep: {name: z}
+  File_index:
+    output_path: /Header.File_index
+    # Generated during translation
+    type: SkipTranslation
   # Gadget-2 header fields
   NumPart_ThisFile:
     type: AttributeTranslation
