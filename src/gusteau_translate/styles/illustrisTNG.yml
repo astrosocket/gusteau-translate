@@ -480,6 +480,18 @@ PartType0:
       output_path: InternalEnergies
       units: "(km/s)**2"
       type: ParticleDatasetTranslation
+    InternalEnergyOld:
+      # ryl disable rule:line-length
+      description: >
+        Old internal (thermal) energy per unit mass for this gas cell. See FAQ
+        for conversion to gas temperature. This field holds the original values,
+        and is **not recommended for use**, see the
+        [data release background](https://www.tng-project.org/data/docs/background/#internalenergy)
+        for details. 
+      #ryl enable rule:line-length
+      output_path: InternalEnergiesOld
+      units: "(km/s)**2"
+      type: ParticleDatasetTranslation
     Machnumber:
       description: >
         Shock finder output: The Mach number (ratio of fluid velocity to sound
