@@ -2,6 +2,7 @@ import itertools
 import logging
 import numbers
 import typing
+import warnings
 from dataclasses import KW_ONLY, InitVar, dataclass, field
 from pathlib import Path
 from typing import Annotated, Literal, cast
@@ -10,7 +11,6 @@ import h5py
 import h5py._hl.filters
 import numpy as np
 from annotated_types import MaxLen, MultipleOf
-from numpy.typing import ArrayLike, NDArray
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
@@ -32,11 +32,14 @@ from .misc_translation import SkipTranslation
 LOGGER = logging.getLogger(LOGGER_NAME)
 
 
-def _validate_columns(columns: ArrayLike | None) -> int | NDArray[np.int_] | None:
+def _validate_columns(columns: int | slice | None) -> int | slice | None:
     if columns is None:
         return None
-    columns = np.array(columns).astype(np.int_)
-    return int(columns) if not len(columns.shape) else columns
+    if not isinstance(columns, (int, slice)):
+        raise ValueError(
+            f"Only integer or slices are supported. Provided {type(columns)}"
+        )
+    return columns
 
 
 class FilterInfo(BaseModel):
@@ -201,9 +204,9 @@ def _add_options_to_proplist(  # noqa: C901
 @dataclass
 class DatasetTranslation(FieldTranslation):
     _: KW_ONLY
-    columns: int | list[int] | NDArray[np.int_] | None = None
+    columns: int | slice | None = None
     """
-    Index or list of indices representing the column in the 2D dataset to load
+    Index or slice of indices representing the column(s) in the 2D dataset to load
     1D datasets or datasets that use all the columns should specify None
     """
     compression: compression_type | None = None
@@ -338,6 +341,38 @@ class ConstantParticleDatasetTranslation(
     """
 
 
+def _load_directly(
+    indata: h5py.Dataset,
+    shape: tuple[int, ...],
+    new_length: int,
+    max_index: int,
+    new_type: np.dtype | str,
+    columns: slice | int | None = None,
+) -> np.ndarray:
+    if isinstance(columns, slice) and columns.step is not None and columns.step > 1:
+        # See https://forum.hdfgroup.org/t/performance-reading-data-with-non-contiguous-selection/8979/2
+        # for a possible workaround for non-contiguous slices that we could
+        # implement in the future...
+        warnings.warn(
+            message=(
+                "Non-contiguous slice detected!"
+                " Non-contiguous slices are known to use significantly more memory"
+                " and time. This may cause OOM errors!"
+            ),
+            stacklevel=2,
+        )
+    if len(shape) < 2:
+        value = np.empty(shape=(new_length,), dtype=new_type)
+        indata.read_direct(value, np.s_[:max_index])
+        return value
+    columns = np.s_[:] if columns is None else columns
+    temp = np.empty((1, *shape[1:]))
+    new_shape = (new_length, *temp[:, columns].shape[1:])
+    value = np.empty(shape=new_shape, dtype=new_type)
+    indata.read_direct(value, np.s_[:max_index, columns])
+    return value
+
+
 @dataclass
 class DatasetLoadStep(LoadStep):
     """Load the dataset from field.input_path
@@ -365,13 +400,13 @@ class DatasetLoadStep(LoadStep):
         indata = cast(h5py.Dataset, context.infile[field.input_path])
         if field.columns is not None and len(indata.shape) < 2:
             raise TranslationError("Attempting to load 1D dataset as 2D")
-        max_index = 1 if context.options.skip_data else indata.shape[0] + 1
+        shape = indata.shape
+        new_length = 1 if context.options.skip_data else shape[0]
+        max_index = 1 if context.options.skip_data else shape[0] + 1
         new_type = indata.dtype if field.dtype is None else field.dtype
-        field.value = np.array(
-            indata[:max_index]
-            if field.columns is None
-            else indata[:max_index, field.columns],
-            dtype=new_type,
+
+        field.value = _load_directly(
+            indata, shape, new_length, max_index, new_type, field.columns
         )
 
         # default to gzip compression if none applied
@@ -423,7 +458,7 @@ class DatasetLoadStep(LoadStep):
                 field.chunks = (
                     (chunk_height,)
                     if isinstance(field.columns, int)
-                    else (chunk_height, len(field.columns))
+                    else (chunk_height, len(np.arange(shape[1])[field.columns]))
                 )
             else:
                 field.chunks = (chunk_height, *field.chunks[1:])
