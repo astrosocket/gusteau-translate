@@ -448,7 +448,7 @@ class DatasetLoadStep(LoadStep):
         in_chunks = True if indata.chunks is None else indata.chunks
 
         field.chunks = (
-            cast(tuple[int, ...] | None, in_chunks)
+            cast(tuple[int, ...] | bool | None, in_chunks)
             if field.chunks is None
             else field.chunks
         )

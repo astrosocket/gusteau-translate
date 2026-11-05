@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from typing import cast
+
 __lazy_modules__ = ["packingcubes"]
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import packingcubes
@@ -13,7 +14,7 @@ from numpy.typing import NDArray
 
 from ..cells import CellsMetadata
 from ..config import LOGGER_NAME
-from ..pipeline import NextStep
+from ..pipeline import NextStep, PipelineCursor
 from ..translation_base import (
     TranslationClassError,
     TranslationContext,
@@ -21,6 +22,7 @@ from ..translation_base import (
 )
 from ..translations.dataset_translation import (
     DatasetTranslation,
+    _load_directly,
     particle_group_from_output_path,
 )
 
@@ -52,6 +54,54 @@ def _compute_cell_indices(
             " a packed tree."
         )
     return cube_indices
+
+
+def _save_shuffle_list(
+    context: TranslationContext,
+    next_step: NextStep,
+    particle_group: str,
+    index: np.ndarray,
+):
+    """
+    Fork the current pipeline, effectively adding in a new ParticleDatasetTranslation
+    """
+
+    shuffle_field = context.translation._default_translation_factory(
+        "ParticleDatasetTranslation",
+        f"/{particle_group}/OriginalIndices",
+        input_description="Generated via packingcubes",
+        compression="gzip",
+        chunks=True,
+        description="The original indices of the particles.",
+    )
+
+    shuffle_field.value = index
+
+    shuffle_field.pipeline.remove("DatasetLoadStep")
+    # make sure we remove any packingcubes steps!
+    shuffle_field.pipeline.remove("PackCubesStep")
+    shuffle_field.pipeline.remove("SortDataStep")
+
+    new_context = TranslationContext(
+        context.infile,
+        context.outfile,
+        context.tempdir,
+        context.translation,
+        shuffle_field,
+        context.cells,
+        context.partfile_paths,
+        context.quantities,
+        context.options,
+    )
+
+    cursor = cast(PipelineCursor, next_step)
+    context.translation.apply_translation(
+        shuffle_field,
+        new_context,
+        cursor.error_handler,
+    )
+
+    return
 
 
 @dataclass
@@ -93,14 +143,43 @@ class PackCubesStep(TranslationStep):
             dataset=context.outfile, particle_type=particle_group, force_overwrite=True
         )
 
-        index_file_name = Path(context.tempdir) / f"{particle_group}.index"
-        LOGGER.debug(f"Dumping index to {index_file_name}")
-        dataset.index.tofile(index_file_name)
+        # index_file_name = Path(context.tempdir) / f"{particle_group}.index"
+        # LOGGER.debug(f"Dumping index to {index_file_name}")
+        # dataset.index.tofile(index_file_name)
 
         # remove the sort datastep since we've already sorted the Coordinates
         field.pipeline.remove("SortDatasetStep")
 
         next_step(context)
+
+        # Need to save the shuffle list **after** finishing the Coordinates pipeline
+        # otherwise we screw up the cells logic
+        _save_shuffle_list(context, next_step, particle_group, dataset.index)
+
+
+def _load_shuffle_list(context: TranslationContext, particle_group: str) -> np.ndarray:
+    """Lazily load the corresponding shuffle list"""
+    quantities = context.quantities
+    # indices = cast(dict[str, np.ndarray|None], quantities.setdefault("indices",{}))
+    indices = quantities.setdefault("indices", {})
+    index = indices.get(particle_group, None)
+    if index is not None:
+        return index
+    LOGGER.debug(f"Switching shuffle list to {particle_group}")
+    # unlink currently loaded shuffle list
+    for k in indices:
+        indices[k] = None
+    index_ds = context.outfile[f"/{particle_group}/OriginalIndices"]
+    index_len = index_ds.shape[0]
+    index = _load_directly(
+        index_ds,
+        shape=index_ds.shape,
+        new_length=index_len,
+        max_index=index_len + 1,
+        new_type=index_ds.dtype,
+    )
+    indices[particle_group] = index
+    return index
 
 
 @dataclass
@@ -116,8 +195,11 @@ class SortDatasetStep(TranslationStep):
             f"Sorting {context.field.output_path} dataset from"
             f" {particle_group}'s packingcubes indices"
         )
-        index_file = Path(context.tempdir) / f"{particle_group}.index"
-        index = np.memmap(index_file, dtype=np.int64)
+        # index_file = Path(context.tempdir) / f"{particle_group}.index"
+        # index = np.memmap(index_file, dtype=np.int64)
+
+        # We want to avoid constantly loading this if we can help it
+        index = _load_shuffle_list(context, particle_group)
 
         packingcubes.data_objects._sort_field_in_place(index, field.value)
 
