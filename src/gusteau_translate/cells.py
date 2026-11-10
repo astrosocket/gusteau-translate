@@ -55,6 +55,8 @@ def _create_virtual_dataset(
         filename = filename.resolve()
         with h5py.File(str(filename), "r") as subfile:
             shape = subfile[dataset_path].shape
+            if shape[0] <= 0:
+                continue
             subdatasets.append(_SubDataset(filename, shape))
             dtype = subfile[dataset_path].dtype
     total_length = sum(s.shape[0] for s in subdatasets)
