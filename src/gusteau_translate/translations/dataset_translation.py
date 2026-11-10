@@ -580,7 +580,7 @@ def _save_dataset_with_cells(field: DatasetTranslation, context: TranslationCont
         _save_dataset_part(field, context.outfile)
         return
 
-    num_partfiles = context.options.num_partfiles
+    num_partfiles = len(context.partfile_paths)
 
     structure = _get_cell_structure(
         field, context.outfile, context.cells, num_partfiles
