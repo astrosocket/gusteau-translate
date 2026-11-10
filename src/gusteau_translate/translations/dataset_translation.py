@@ -541,13 +541,17 @@ def _get_cell_structure(
     particles_per_file = total / num_partfiles
     file_num = 0
     running_particle_count = 0
+    file_counts = np.zeros((num_partfiles,), dtype=np.int64)
     for i in range(cells.nr_cells):
         files[i] = file_num
         offsets[i] = running_particle_count
         running_particle_count += counts[i]
-        if running_particle_count > particles_per_file:
+        next_cell_count = counts[i + 1] if i + 1 < cells.nr_cells  else 0
+        if running_particle_count + next_cell_count > 1.1 * particles_per_file:
+            file_counts[file_num] = running_particle_count
             file_num += 1
-            running_particle_count = 0
+            file_num %= num_partfiles
+            running_particle_count = file_counts[file_num]
 
     cells_grp["Counts"][particle_group] = counts
     cells_grp["Files"][particle_group] = files
