@@ -546,7 +546,7 @@ def _get_cell_structure(
         files[i] = file_num
         offsets[i] = running_particle_count
         running_particle_count += counts[i]
-        next_cell_count = counts[i + 1] if i + 1 < cells.nr_cells  else 0
+        next_cell_count = counts[i + 1] if i + 1 < cells.nr_cells else 0
         if running_particle_count + next_cell_count > 1.1 * particles_per_file:
             file_counts[file_num] = running_particle_count
             file_num += 1
