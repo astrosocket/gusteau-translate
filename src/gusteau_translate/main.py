@@ -18,7 +18,7 @@ from .config import (
     ValidationOptions,
 )
 from .snapshot import Snapshot
-from .styles import parse_style_file
+from .styles import parse_modular_style_file
 from .translation_base import (
     Translation,
     TranslationStep,
@@ -266,7 +266,7 @@ def get_translation(
     translation_file = Path(translation_file)
     yaml = pyyaml.YAML(typ="safe", pure=True)
     try:
-        doc, gusteau = parse_style_file(translation_file, yaml=yaml)
+        doc, gusteau = parse_modular_style_file(translation_file, yaml=yaml)
     except FileNotFoundError:
         LOGGER.warning(
             f"Could not find style file {translation_file} as file or as built in. "

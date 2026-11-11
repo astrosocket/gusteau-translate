@@ -4,6 +4,7 @@ Module for locating and reading style files
 
 import importlib.resources
 import logging
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -111,4 +112,113 @@ def parse_style_file(style_file: str | Path, **kwargs) -> tuple[dict, dict[str, 
     style = _load_style_file(Path(path), text=text, **kwargs)
     top_level = {k.lower(): k for k in style}
     gusteau = style.pop(top_level["gusteau"], {})
+    return style, gusteau
+
+
+def _validate_depends_on(depends_on: Any) -> deque[str]:
+    """Private function to validate the gusteau depends-on field"""
+    depends_on = [depends_on] if isinstance(depends_on, str) else depends_on
+
+    if not isinstance(depends_on, list) or not all(
+        isinstance(s, str) for s in depends_on
+    ):
+        raise ValueError(
+            "Only strings or lists of strings are valid for"
+            " the gusteau depends-on field."
+        )
+    return deque(depends_on)
+
+
+def parse_modular_style_file(
+    style_file: str | Path, **kwargs
+) -> tuple[dict, dict[str, Any]]:
+    """
+    Parse the text of style_file as dictionary, populating missing values from subfiles
+
+    Calls [parse_style_file][gusteau_translate.styles.parse_style_file] but then checks
+    the gusteau dictionary for the "depends-on" field. Processes the value(s) as modular
+    style files (recursing as needed) and concatenating the loaded results into the
+    final style.
+
+    Parameters
+    ----------
+    style_file:
+        The path or name of the style file.
+        Will first search for a file with the exact name, then look for the name
+        in the provided style files.
+
+    kwargs:
+        Pass additional options to the actual text parser (e.g. yaml or toml)
+
+    Returns
+    -------
+    style:
+        Style file in dictionary form
+
+    gusteau:
+        Settings specific to this style
+
+    Notes
+    -----
+    Note that values from ancestor/depended-on style files do not overwrite values
+    in the top-level, so this can be used as a specialization mechanism. For example,
+    one could write a simulation-code.style_file (like gizmo.yml) and a
+    simulation.style_file (like simba.yml) where most of the translations would be in
+    the simulation-code.style_file and simulation.style_file would contain only the
+    translations that differ from the baseline, like paths to parameter files or
+    chemical abundance redefinitions.
+
+    Operates on a queue, so given example styles
+    ```yml
+    # simba.yml
+    gusteau:
+        depends-on: [gizmo, simba-sub]
+    Header:
+        Name: Simba
+    # gizmo.yml
+    gusteau:
+        depends-on: [base]
+    Header:
+        Name: Gizmo
+        Type: GIZMO
+    # simba-sub.yml
+    Header:
+        Type: Simba-sub
+        Other: Simba-sub
+    # base.yml
+    Header:
+        Other: Base
+    ```
+    the equivalent style would be
+    ```yml
+    Header:
+        Name: Simba
+        Type: GIZMO
+        Other: Simba-sub
+    ```
+    """
+    LOGGER.info(f"Parsing modular style file {style_file}")
+    style, gusteau = parse_style_file(style_file, **kwargs)
+
+    to_visit = _validate_depends_on(gusteau.pop("depends-on", []))
+
+    visited = {str(style_file)}
+
+    while to_visit:
+        sf = Path(to_visit.popleft())
+        if sf in visited:
+            continue
+        visited.add(str(sf))
+        base_style = style
+        base_gusteau = gusteau
+        style, gusteau = parse_style_file(sf, **kwargs)
+        style |= base_style
+        additional_to_visit = _validate_depends_on(gusteau.pop("depends-on", []))
+        to_visit.extend(additional_to_visit)
+        gusteau |= base_gusteau
+    LOGGER.info("Built modular style file from")
+    for sf in visited:
+        LOGGER.info(f"\t{sf}")
+    gusteau["depends-on"] = visited
+
     return style, gusteau

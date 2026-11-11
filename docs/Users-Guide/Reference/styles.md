@@ -24,3 +24,15 @@ for child in style_dir.iterdir():
             break
     print()
 ```
+
+Styles are parsed with the following functions:
+
+::: gusteau_translate.styles.parse_modular_style_file
+    options:
+        show_root_heading: true
+        heading_level: 3
+
+::: gusteau_translate.styles.parse_style_file
+    options:
+        show_root_heading: true
+        heading_level: 3
