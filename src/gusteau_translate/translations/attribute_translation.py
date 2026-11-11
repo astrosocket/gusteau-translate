@@ -45,8 +45,26 @@ class AttributeTranslation(FieldTranslation):
         return Path(self.output_path).suffix[1:]
 
 
+def _process_constant(constant, *, force_scalar: bool, dtype: str | None):
+    """Process a provided constant as an attribute"""
+    if np.array(constant).dtype == np.object_:
+        raise TranslationError(
+            "Constant must be convertible to a non-object numpy array"
+        )
+    if force_scalar and len(np.array(constant)) > 1:
+        raise TranslationError("Attempting to force an array to a scalar")
+    # Apply dtype if present and not a string
+    if dtype is not None:
+        if isinstance(constant, str):
+            raise TranslationError("dtype cannot be applied to str input")
+        constant = np.array(constant, dtype=dtype)
+    return constant
+
+
 @dataclass
 class ConstantAttributeTranslation(AttributeTranslation):
+    """Attribute provided by a hard-coded constant value"""
+
     _: KW_ONLY
     input_path: str = ""
     input_description: str = "Generated from constant"
@@ -57,18 +75,9 @@ class ConstantAttributeTranslation(AttributeTranslation):
         self.input_path = ""
         # don't need to load anything
         self.pipeline.remove("AttributeLoadStep")
-        if np.array(constant).dtype == np.object_:
-            raise TranslationError(
-                "Constant must be convertible to a non-object numpy array"
-            )
-        if self.force_scalar and len(np.array(constant)) > 1:
-            raise TranslationError("Attempting to force an array to a scalar")
-        self._value = constant
-        # Apply dtype if present and not a string
-        if self.dtype is not None:
-            if isinstance(constant, str):
-                raise TranslationError("dtype cannot be applied to str input")
-            self._value = np.array(self._value, dtype=self.dtype)
+        self._value = _process_constant(
+            constant, force_scalar=self.force_scalar, dtype=self.dtype
+        )
 
     def to_dict(self, docpart: dict[str, dict_info_type]) -> dict[str, dict_info_type]:
         table = super().to_dict(docpart)
@@ -77,7 +86,28 @@ class ConstantAttributeTranslation(AttributeTranslation):
 
 
 @dataclass
+class ConditionalRequiredAttributeTranslation(AttributeTranslation):
+    """
+    Attributes that are only present if another attribute is true
+
+    If the attribute is not present, fall back to constant value
+    """
+
+    _: KW_ONLY
+    depends_on: str
+    constant: InitVar[Any]
+
+    def __post_init__(self, constant: Any):
+        super().__post_init__()
+        self.pipeline.remove("AttributeLoadStep")
+        self.pipeline.append(ConditionalLoadStep())
+        self.input_description = f"Dependent on {self.depends_on}, otherwise {constant}"
+
+
+@dataclass
 class FileContentsTranslation(AttributeTranslation):
+    """Attribute provided by file contents"""
+
     _: KW_ONLY
     file_path: str
     input_description: str = "Generated from file"
@@ -105,6 +135,8 @@ class FileContentsTranslation(AttributeTranslation):
 
 @dataclass
 class SnapshotAttributeTranslation(AttributeTranslation):
+    """Attribute provided by a snapshot file attribute"""
+
     _: KW_ONLY
     attribute: Literal["timestamp"] | str
     """Name of the file attribute to use (obtained through Path.stat). 
@@ -178,6 +210,32 @@ def process_attribute(
     return attr
 
 
+def _load_attribute(
+    infile: h5py.File,
+    input_path,
+    *,
+    dtype: str | None = None,
+    force_scalar: bool,
+    required: bool = False,
+):
+    # Note: can't use Path here, because non-Gusteau names may have spaces
+    # in them
+    inpath = input_path.split(".")
+    path = inpath[0]
+    name = inpath[1]
+    if not (path in infile and name in infile[path].attrs):
+        if required:
+            raise TranslationError(f"Required attribute {input_path} not present!")
+        LOGGER.debug(f"Attribute {name} on {path} not present. Nothing to do")
+        return None
+    LOGGER.debug(f"Loading attribute {name} on {path}")
+    return process_attribute(
+        infile[path].attrs[name],
+        dtype=dtype,
+        force_scalar=force_scalar,
+    )
+
+
 @dataclass
 class AttributeLoadStep(LoadStep):
     """Load the value from field.input_path
@@ -192,24 +250,46 @@ class AttributeLoadStep(LoadStep):
         field = context.field
         if not isinstance(field, AttributeTranslation):
             raise TranslationClassError(step=self, field=field)
-        # Note: can't use Path here, because non-Gusteau names may have spaces
-        # in them
-        inpath = field.input_path.split(".")
-        path = inpath[0]
-        name = inpath[1]
-        if not (path in context.infile and name in context.infile[path].attrs):
-            if field._required:
-                raise TranslationError(
-                    f"Required attribute {field.input_path} not present!"
-                )
-            LOGGER.debug(f"Attribute {name} on {path} not present. Nothing to do")
-            return
-        LOGGER.debug(f"Loading attribute {name} on {path}")
-        field._value = process_attribute(
-            context.infile[path].attrs[name],
+        field._value = _load_attribute(
+            context.infile,
+            field.input_path,
             dtype=field.dtype,
             force_scalar=field.force_scalar,
+            required=field._required,
         )
+
+        next_step(context)
+
+
+@dataclass
+class ConditionalLoadStep(AttributeLoadStep):
+    """Load the value from field.input_path iff depended-on field is True
+
+    Note
+    ----
+    Will call [process_attribute][process_attribute] on the attribute as part
+        of the loading process.
+    """
+
+    def __call__(self, context: TranslationContext, next_step: NextStep):
+        field = context.field
+        if not isinstance(field, ConditionalRequiredAttributeTranslation):
+            raise TranslationClassError(step=self, field=field)
+
+        dep_field = _load_attribute(
+            context.infile,
+            field.depends_on,
+            force_scalar=True,
+        )
+
+        if dep_field:
+            field._value = _load_attribute(
+                context.infile,
+                field.input_path,
+                dtype=field.dtype,
+                force_scalar=field.force_scalar,
+                required=field._required,
+            )
 
         next_step(context)
 
