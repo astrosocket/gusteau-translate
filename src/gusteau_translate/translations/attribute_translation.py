@@ -257,6 +257,8 @@ class AttributeLoadStep(LoadStep):
             force_scalar=field.force_scalar,
             required=field._required,
         )
+        if field._value is None:
+            return
 
         next_step(context)
 
@@ -290,6 +292,11 @@ class ConditionalLoadStep(AttributeLoadStep):
                 force_scalar=field.force_scalar,
                 required=field._required,
             )
+        # if dep_field is not present, we don't need to do anything because we
+        # already set value on initialization
+
+        if field._value is None:
+            return
 
         next_step(context)
 
