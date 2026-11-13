@@ -591,9 +591,6 @@ PartType0:
 # Note that we already created the groups above, otherwise we'd need to create
 # them here
 Gas:
-  Number_of_fields:
-    constant: 25
-    type: ConstantAttributeTranslation
 
   # by group
   Feedback:
@@ -1022,9 +1019,6 @@ PartType1:
 
 
 ColdDarkMatter:
-  Number_of_fields:
-    constant: 8
-    type: ConstantAttributeTranslation
   Subfind:
     Num_nearest:
       constant: 32
@@ -1275,9 +1269,6 @@ PartType4:
 # Note that we already created the groups above, otherwise we'd need to create
 # them here
 Stars:
-  Number_of_fields:
-    constant: 8
-    type: ConstantAttributeTranslation
 
   FromParent_Gas:
     Feedback:
@@ -1852,9 +1843,6 @@ PartType5:
 # Note that we already created the groups above, otherwise we'd need to create
 # them here
 BlackHoles:
-  Number_of_fields:
-    constant: 24
-    type: ConstantAttributeTranslation
 
   Subfind:
     Num_nearest:

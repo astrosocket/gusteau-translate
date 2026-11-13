@@ -243,6 +243,24 @@ def _process_particle_groups(
     )
 
 
+def _write_particle_group_field_numbers(
+    context: TranslationContext,
+):
+    """Add the Number_of_fields attribute to all particle groups"""
+    particle_groups = context.quantities["Particle_names"]
+
+    for name in particle_groups:
+        pg = cast(h5py.Group, context.outfile[name])
+        # use a list so it's shared
+        count = [0]
+
+        def visititems_function(_, object_, count: list[int]):
+            count[0] += isinstance(object_, h5py.Dataset)
+
+        pg.visititems(partial(visititems_function, count=count))
+        pg.attrs["Number_of_fields"] = count[0]
+
+
 def _add_cell_translations(translation: Translation, options: TranslationOptions):
     """Add the translations for the cells group structure"""
 
@@ -516,6 +534,8 @@ class Snapshot:
 
             LOGGER.info("Performing any remaining translations")
             translation.apply_unused_translations(context, error_handler)
+
+            _write_particle_group_field_numbers(context)
 
             copy_cell_structure_to_partfiles(outfile, partfile_paths)
 
