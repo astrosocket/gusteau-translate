@@ -1,0 +1,21 @@
+# Translation style for FIRE snapshots
+# This will contain modifications to the gizmo base style from the FIRE
+# collaboration.
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  depends-on: gizmo
+
+
+# The following fields are in GUSTEAU Spec order (header first, then other
+# required groups)
+
+# Required groups
+Header:
+  # Note that a number of these fields are single element arrays instead of
+  # scalars
+  Code: {constant: FIRE, type: ConstantAttributeTranslation}
+  Source: {constant: fire, type: ConstantAttributeTranslation}
+  Source_file: {file_path: fire, type: FileContentsTranslation}

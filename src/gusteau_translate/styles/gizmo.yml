@@ -1,0 +1,8 @@
+# Translation style for GIZMO Dark Matter only snapshots
+# Depends on gizmo-required and gizmo-dm
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  depends-on: [gizmo-pieces/gizmo-required]
