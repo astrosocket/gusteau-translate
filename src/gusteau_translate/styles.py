@@ -115,7 +115,8 @@ def parse_style_file(style_file: str | Path, **kwargs) -> tuple[dict, dict[str, 
     return style, gusteau
 
 
-def _validate_depends_on(depends_on: Any) -> deque[str]:
+def _validate_depends_on(gusteau: dict[str, Any]) -> deque[str]:
+    depends_on = gusteau.pop("depends-on", []) or gusteau.pop("depends_on", [])
     """Private function to validate the gusteau depends-on field"""
     depends_on = [depends_on] if isinstance(depends_on, str) else depends_on
 
@@ -200,7 +201,7 @@ def parse_modular_style_file(
     LOGGER.info(f"Parsing modular style file {style_file}")
     style, gusteau = parse_style_file(style_file, **kwargs)
 
-    to_visit = _validate_depends_on(gusteau.pop("depends-on", []))
+    to_visit = _validate_depends_on(gusteau)
 
     visited = {str(style_file)}
 
@@ -213,7 +214,7 @@ def parse_modular_style_file(
         base_gusteau = gusteau
         style, gusteau = parse_style_file(sf, **kwargs)
         style |= base_style
-        additional_to_visit = _validate_depends_on(gusteau.pop("depends-on", []))
+        additional_to_visit = _validate_depends_on(gusteau)
         to_visit.extend(additional_to_visit)
         gusteau |= base_gusteau
     LOGGER.info("Built modular style file from")
