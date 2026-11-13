@@ -99,6 +99,9 @@ class Math2Step(MathStep):
 
     Attributes
     ----------
+    equation: LiteralString
+        A string literal defining the mathematical expression.
+        Can use any numpy expression and the value `x`
     external: str | list[str]
         The path to the external variable (`y`) in standard GUSTEAU field notation.
         If multiple external variables are given, they correspond to additional
