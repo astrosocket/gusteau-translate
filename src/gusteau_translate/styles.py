@@ -11,7 +11,7 @@ from typing import Any
 import ruamel.yaml as pyyaml
 import tomlkit
 
-from .config import LOGGER_NAME
+from .config import DDEBUG, LOGGER_NAME
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -130,6 +130,29 @@ def _validate_depends_on(gusteau: dict[str, Any]) -> deque[str]:
     return deque(depends_on)
 
 
+def _recursively_update(d: dict[str, Any], other: dict[str, Any]):
+    """
+    Normal dictionary update but recurses into subdictionaries
+
+    Effectively d |= other, except if key `k` is in both `d` and `other` *and*
+    if `d[k]` and `other[k]` are both dictionaries, do
+    `_recursively_update(d[k],other[k])` instead of `d[k] = other[k]`
+    """
+
+    for k, o_v in other.items():
+        d_v = d.get(k)
+        recurse_dict = isinstance(o_v, dict) and isinstance(d_v, dict)
+        if recurse_dict:
+            LOGGER.log(
+                DDEBUG,
+                f"Recursing into {k}",
+            )
+            _recursively_update(d_v, o_v)
+            continue
+        LOGGER.log(DDEBUG, f"{'Updating' if k in d else 'Adding'} {k}")
+        d[k] = o_v
+
+
 def parse_modular_style_file(
     style_file: str | Path, **kwargs
 ) -> tuple[dict, dict[str, Any]]:
@@ -213,13 +236,13 @@ def parse_modular_style_file(
         base_style = style
         base_gusteau = gusteau
         style, gusteau = parse_style_file(sf, **kwargs)
-        style |= base_style
+        _recursively_update(style, base_style)
         additional_to_visit = _validate_depends_on(gusteau)
         to_visit.extend(additional_to_visit)
-        gusteau |= base_gusteau
+        _recursively_update(gusteau, base_gusteau)
     LOGGER.info("Built modular style file from")
     for sf in visited:
-        LOGGER.info(f"\t{sf}")
+        LOGGER.info(f"\t\t{sf}")
     gusteau["depends-on"] = visited
 
     return style, gusteau
