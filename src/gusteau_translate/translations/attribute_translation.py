@@ -192,6 +192,8 @@ def process_attribute(
         # _value is numpy array
 
         # convert types if requested
+        if dtype == "str":
+            return str(attr)
         attr = attr if dtype is None else attr.astype(dtype)
 
         # check if using an old-style fixed-length string and convert
