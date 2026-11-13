@@ -2,7 +2,7 @@
 # This will be based on the public version of gizmo and the gizmo documentation.
 # Important: this is designed assuming a gizmo version > 2021! (Basically, we
 # assume the GIZMO_version header field is present)
-# For older versions, try gizmo-required_old.yml or gadget_old.yml
+# For older versions, try gizmo-required_old or gadget_old
 # Version: v0.1.0
 
 # Options are specified in the GUSTEAU group

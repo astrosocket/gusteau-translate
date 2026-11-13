@@ -1,9 +1,5 @@
 # Translation style piece for the basic SIDM from GIZMO snapshots
 # This assumes the SIDM is stored as the traditional PartType1
-# This will be based on the public version of gizmo and the gizmo documentation.
-# Important: this is designed assuming a gizmo version > 2021! (Basically, we
-# assume the GIZMO_version header field is present)
-# For older versions, try gizmo-cdm_old.yml or gadget_old.yml
 # Version: v0.1.0
 
 # Options are specified in the GUSTEAU group

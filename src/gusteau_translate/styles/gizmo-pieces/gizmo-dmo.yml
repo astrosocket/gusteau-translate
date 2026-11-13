@@ -1,10 +1,5 @@
 # Translation style for GIZMO Dark Matter only snapshots
-# This will be based on the public version of gizmo and the gizmo documentation.
-# Important: this is designed assuming a gizmo version > 2021! (Basically, we
-# assume the GIZMO_version header field is present)
-# For older versions, try gizmo_old.yml or gadget_old.yml
-# For hydro snapshots, see gizmo.yml
-# For FIRE-type snapshots, see fire.yml
+# Depends on gizmo-required and gizmo-dm
 # Version: v0.1.0
 
 # Options are specified in the GUSTEAU group
