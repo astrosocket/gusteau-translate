@@ -12,6 +12,19 @@ from ..translation_base import (
 )
 
 
+def _clean_equation_string(equation: str) -> str:
+    """Remove extraneous whitespace and quotation characters"""
+
+    def strip(s: str) -> str:
+        return s.strip().strip("\"'")
+
+    stripped = strip(equation)
+    while equation != stripped:
+        equation = stripped
+        stripped = strip(stripped)
+    return equation
+
+
 @dataclass
 class MathStep(TranslationStep):
     """
@@ -35,13 +48,14 @@ class MathStep(TranslationStep):
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
+        equation = _clean_equation_string(self.equation)
         # expr = sympify(self.equation)
         # x = symbols("x")
         # field.value = np.array(expr.subs(x, unyt_array(field.value).v)).astype(
         #     field.dtype
         # )
         x = field.value
-        field.value = np.asarray(eval(self.equation)).astype(field.dtype)
+        field.value = np.asarray(eval(equation)).astype(field.dtype)
         next_step(context)
 
 
@@ -134,6 +148,7 @@ class Math2Step(MathStep):
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
+        equation = _clean_equation_string(self.equation)
         x = field.value
         locals_ = locals()
         for i, (external, columns) in enumerate(
@@ -145,7 +160,7 @@ class Math2Step(MathStep):
                 context.infile,
                 skip_data=context.options.skip_data,
             )
-        field.value = np.array(eval(self.equation, locals=locals_)).astype(field.dtype)
+        field.value = np.array(eval(equation, locals=locals_)).astype(field.dtype)
         if self.force_scalar:
             if len(field.value) > 1:
                 raise TranslationError("Attempting to force an array into a scalar!")
