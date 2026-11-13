@@ -226,7 +226,6 @@ def initialize_particle_groups(
 def _process_particle_groups(
     context: TranslationContext,
     error_handler: ErrorHandler,
-    options: TranslationOptions,
 ):
     particle_groups = context.quantities["Particle_names"]
 
@@ -457,7 +456,6 @@ class Snapshot:
             _process_particle_groups(
                 context,
                 error_handler,
-                options,
             )
 
             self.directory.update(
