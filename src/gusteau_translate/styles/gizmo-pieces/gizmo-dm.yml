@@ -1,0 +1,103 @@
+# Translation style piece for the standard CDM from GIZMO snapshots
+# This will be based on the public version of gizmo and the gizmo documentation.
+# Important: this is designed assuming a gizmo version > 2021! (Basically, we
+# assume the GIZMO_version header field is present)
+# For older versions, try gizmo-cdm_old.yml or gadget_old.yml
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  pipeline_class_additions:
+    # Steps to add to every translation that has the listed (super)class
+
+  pipeline_path_additions:
+    # Steps to add to every translation whose **output** path matches
+    # Patterns are matched a la pathlib's
+    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    # with case-sensitive set to True
+
+PartType1:
+  output_path: /DarkMatter
+  type: GroupTranslation
+  description: "Dark matter with nbody physics"
+  tags:
+    - Massive
+    - Particles
+  has_particles: true
+  pipeline:
+    LinkStep:
+      path: /PartType1
+  children:
+    # Attributes
+    Aliases:
+      constant: ["PartType1"]
+      type: ConstantAttributeTranslation
+
+    # Groups:
+
+    # Datasets:
+    Coordinates:
+      description: >
+        [N,3] array where N is the number of particles (of the given type).
+        Elements [i,0], [i,1], [i,3] give the x, y, z (respectively) coordinate
+        positions of particle “i” in code units
+      units: U_L
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    Masses:
+      description: >
+        [N] array of particles masses (in code units)
+      units: "U_M"
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    ParticleIDs:
+      description: >
+        [N] array with the unique integer ID for every particle.
+        These are the same across snapshots, and can be used to link particles
+        across time.
+      type: ParticleDatasetTranslation
+    Velocities:
+      description: >
+        Spatial velocity
+      units: "U_V"
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+    # Optional
+    Acceleration:
+      output_path: "Accelerations"
+      description: >
+        Accelerations of the particles.
+      units: "U_L/U_t**2"
+      type: ParticleDatasetTranslation
+    Potential:
+      description: >
+        Gravitational potential energy.
+      output_path: Potentials
+      units: "(U_V)**2"
+      a_scale: -1
+      type: ParticleDatasetTranslation
+    ParticleChildIDsNumber:
+      output_path: "SplitTrees"
+      description: >
+        [N] array with a unique sub-number for each parent ParticleID.
+        This distinguishes the different split particles so you can follow them
+        subsequently in time.
+      type: ParticleDatasetTranslation
+    ParticleIDGenerationNumber:
+      output_path: "SplitCounts"
+      description: >
+        [N] array saying which generation the particle comes from (how many
+        generations of splits have occurred from the ICs to produce the given
+        particle, along that particles ancestor history
+      type: ParticleDatasetTranslation
+    Softening_KernelRadius:
+      description: >
+        The gravitational force-softening length of each element, given as the
+        radius of compact support of the softening kernel, in code_length units.
+        With adaptive softening, this varies from element to element.
+      output_path: AGS_Softenings
+      units: "U_L"
+      a_scale: -1
+      type: ParticleDatasetTranslation

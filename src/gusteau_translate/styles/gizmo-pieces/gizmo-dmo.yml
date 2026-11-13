@@ -1,0 +1,56 @@
+# Translation style for GIZMO Dark Matter only snapshots
+# This will be based on the public version of gizmo and the gizmo documentation.
+# Important: this is designed assuming a gizmo version > 2021! (Basically, we
+# assume the GIZMO_version header field is present)
+# For older versions, try gizmo_old.yml or gadget_old.yml
+# For hydro snapshots, see gizmo.yml
+# For FIRE-type snapshots, see fire.yml
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  depends-on: ["gizmo-pieces/gizmo-required", "gizmo-pieces/gizmo-dm"]
+  pipeline_class_additions:
+    # Steps to add to every translation that has the listed (super)class
+    ParticleDatasetTranslation:
+      - ParseUnitsStep
+
+  pipeline_path_additions:
+    # Steps to add to every translation whose **output** path matches
+    # Patterns are matched a la pathlib's
+    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    # with case-sensitive set to True
+
+
+# The following fields are in GUSTEAU Spec order (header first, then other
+# required groups)
+
+# Required groups
+Header:
+  Particle_names:
+    # We don't know what kind of dark matter this is
+    # If you need something more specific, write a dependent module
+    constant: ["DarkMatter", ]
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: Particle_names}
+  Particle_numbers:
+    input_path: /Header.NumPart_Total
+    type: AttributeTranslation
+    dtype: uint64
+    pipeline:
+      Math2Step:
+        priority: 1
+        equation: "2**32 * np.uint64(y) + x"
+        external: /Header.NumPart_Total_HighWord
+      ReorderColumnStep: {priority: 2, new_width: 1, col_indices: [1]}
+      SaveQuantityStep: {name: Particle_numbers}
+  Initial_mass_table:
+    input_path: /Header.MassTable
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep: {new_width: 1, col_indices: [1]}
+  Part_type_mapping:
+    constant: [-1, 0, -1, -1, -1, -1]
+    type: ConstantAttributeTranslation

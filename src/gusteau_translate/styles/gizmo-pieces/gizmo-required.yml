@@ -1,0 +1,665 @@
+# Translation style piece for most required fields from GIZMO snapshots
+# This will be based on the public version of gizmo and the gizmo documentation.
+# Important: this is designed assuming a gizmo version > 2021! (Basically, we
+# assume the GIZMO_version header field is present)
+# For older versions, try gizmo-required_old.yml or gadget_old.yml
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  pipeline_class_additions:
+    # Steps to add to every translation that has the listed (super)class
+    # Note that we do not add the ParseUnitsStep here because we don't know if
+    # there are even any particle groups!
+
+  pipeline_path_additions:
+    # Steps to add to every translation whose **output** path matches
+    # Patterns are matched a la pathlib's
+    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    # with case-sensitive set to True
+
+
+# The following fields are in GUSTEAU Spec order (header first, then other
+# required groups)
+
+# Required groups
+Header:
+  # Note that a number of these fields are single element arrays instead of
+  # scalars
+  Code: {constant: GIZMO, type: ConstantAttributeTranslation}
+  Source: {constant: gizmo, type: ConstantAttributeTranslation}
+  Source_file: {file_path: gizmo, type: FileContentsTranslation}
+  Bounding_box:
+    input_path: /Header.BoxSize
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep:
+        new_width: 6
+        col_indices: [-1, -1, -1, 0, 0, 0]
+  Time:
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        external: /Header.ComovingIntegrationOn
+        equation: "(-1**(y)) * x"
+  Run_name:
+    constant: ""  # Base gizmo doesn't store the run name anywhere
+    type: ConstantAttributeTranslation
+  Num_files_per_snapshot:
+    input_path: /Header.NumFilesPerSnapshot
+    type: AttributeTranslation
+  Dimension: {constant: 3, type: ConstantAttributeTranslation}
+  Snapshot_date:
+    attribute: timestamp
+    type: SnapshotAttributeTranslation
+  Redshift:
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: z}
+  File_index:
+    output_path: /Header.File_index
+    # Generated during translation
+    type: SkipTranslation
+  # Gadget-2 header fields
+  NumPart_ThisFile:
+    type: AttributeTranslation
+    dtype: uint32
+  MassTable:
+    type: AttributeTranslation
+  Flag_Sfr: {dtype: int32, type: AttributeTranslation}
+  Flag_Feedback: {dtype: int32, type: AttributeTranslation}
+  NumPart_Total:
+    type: AttributeTranslation
+    dtype: int32 # match Gadget-2
+  Flag_Cooling: {dtype: int32, type: AttributeTranslation}
+  BoxSize:
+    type: AttributeTranslation
+  Omega0:
+    input_path: /Header.Omega_Matter
+    depends_on: /Header.ComovingIntegrationOn
+    constant: -1
+    type: ConditionalRequiredAttributeTranslation
+  OmegaLambda:
+    input_path: /Header.Omega_Lambda
+    depends_on: /Header.ComovingIntegrationOn
+    constant: -1
+    type: ConditionalRequiredAttributeTranslation
+  HubbleParam:
+    type: AttributeTranslation
+  Flag_StellarAge:
+    dtype: int32
+    type: AttributeTranslation
+  Flag_Metals: {dtype: int32, type: AttributeTranslation}
+  NumPart_Total_HW:
+    constant: [0, 0, 0, 0, 0, 0]
+    type: ConstantAttributeTranslation
+    dtype: int32
+  Flag_Entropy_ICs:
+    # This flag does not appear to be present in the snapshots.
+    dtype: int32
+    constant: 0
+    type: ConstantAttributeTranslation
+
+# All other header fields likely belong in Code or RunInfo
+
+Code:
+  Code: {constant: GIZMO, type: ConstantAttributeTranslation}
+  Code_version:
+    input_path: /Header.GIZMO_version
+    dtype: str
+    type: AttributeTranslation
+  VCS: {constant: git, type: ConstantAttributeTranslation}
+  VCS_repository:
+    constant: https://github.com/pfhopkins/gizmo-public
+    type: ConstantAttributeTranslation
+  # Populate on a sim-by-sim basis
+  Code_hash: {constant: "", type: ConstantAttributeTranslation}
+  HDF5_version:
+    constant: ""
+    type: ConstantAttributeTranslation
+  VCS_id: {constant: "", type: ConstantAttributeTranslation}
+  Git_date: {constant: "", type: ConstantAttributeTranslation}
+  Library_versions:
+    constant: [""]
+    type: ConstantAttributeTranslation
+  Configuration_options:
+    constant: ""
+    type: ConstantAttributeTranslation
+
+Cosmology:
+  Is_cosmological:
+    input_path: /Header.ComovingIntegrationOn
+    type: AttributeTranslation
+  # Since Omega_matter, ... are only required if Is_cosmological, and will be
+  # output, if that's true, we don't need to make them conditional
+  Omega_matter:
+    input_path: /Header.Omega_Matter
+    type: AttributeTranslation
+  Omega_lambda:
+    input_path: /Header.Omega_Lambda
+    type: AttributeTranslation
+  h:
+    input_path: /Header.HubbleParam
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: h}
+  Redshift:
+    input_path: /Header.Redshift
+    type: AttributeTranslation
+  Scale_factor:
+    input_path: /Header.Redshift
+    type: AttributeTranslation
+    pipeline:
+      MathStep: {equation: "1/(1+x)"}
+      SaveQuantityStep: {name: a}
+
+  Omega_baryon:
+    input_path: /Header.Omega_Baryon
+    type: AttributeTranslation
+
+  Omega_radiation:
+    input_path: /Header.Omega_Radiation
+    type: AttributeTranslation
+
+  # The following are not present in the snapshot
+  # Critical_density:
+  # Critical_density_at_z0:
+  # H:
+  # H0:
+  # Hubble_time:
+  # Lookback_time:
+  # Mean_baryon_density:
+  # Mean_matter_density:
+  # N_eff:
+  # Omega_curvature:
+  # Omega_darkmatter:
+  # Omega_radiation:
+  # T_CMB_0:
+  # T_CMB_0_SI:
+  # Universe_age:
+  # a_begin:
+  # a_end:
+  # Time_begin:
+  # Time_end:
+  # w:
+  # w_0:
+  # w_a:
+
+RunInfo:
+  # These should be set by simulation-specific files
+  Parameters:
+    # generated from io.cc
+    # we're manually specifying them here so they go in the RunInfo/Parameters
+    # instead of auto-translating to the Header
+    Minimum_Mass_For_Cell_Merge:
+      input_path: "/Header.Minimum_Mass_For_Cell_Merge"
+      type: AttributeTranslation
+    Maximum_Mass_For_Cell_Split:
+      input_path: "/Header.Maximum_Mass_For_Cell_Split"
+      type: AttributeTranslation
+    Fixed_ForceSoftening_Keplerian_Kernel_Extent:
+      input_path: "/Header.Fixed_ForceSoftening_Keplerian_Kernel_Extent"
+      type: AttributeTranslation
+    Flag_DoublePrecision:
+      input_path: "/Header.Flag_DoublePrecision"
+      type: AttributeTranslation
+    Flag_IC_Info:
+      input_path: "/Header.Flag_IC_Info"
+      type: AttributeTranslation
+    Kernel_Function_ID:
+      input_path: "/Header.Kernel_Function_ID"
+      type: AttributeTranslation
+    Effective_Kernel_NeighborNumber:
+      input_path: "/Header.Effective_Kernel_NeighborNumber"
+      type: AttributeTranslation
+    Subfind_FOFLink_NeighborNumber:
+      input_path: "/Header.Subfind_FOFLink_NeighborNumber"
+      type: AttributeTranslation
+    CosmicRayDiffusionCoeff_at_GV_CodeUnits:
+      input_path: "/Header.CosmicRayDiffusionCoeff_at_GV_CodeUnits"
+      type: AttributeTranslation
+    Grain_InteractionRenormalization:
+      input_path: "/Header.Grain_InteractionRenormalization"
+      type: AttributeTranslation
+    Grain_DissipationFactor:
+      input_path: "/Header.Grain_DissipationFactor"
+      type: AttributeTranslation
+    Grain_KickPerCollision:
+      input_path: "/Header.Grain_KickPerCollision"
+      type: AttributeTranslation
+    Grain_InteractionVelocityScale:
+      input_path: "/Header.Grain_InteractionVelocityScale"
+      type: AttributeTranslation
+    DM_InteractionCrossSection:
+      input_path: "/Header.DM_InteractionCrossSection"
+      type: AttributeTranslation
+    DM_DissipationFactor:
+      input_path: "/Header.DM_DissipationFactor"
+      type: AttributeTranslation
+    DM_KickPerCollision:
+      input_path: "/Header.DM_KickPerCollision"
+      type: AttributeTranslation
+    DM_InteractionVelocityScale:
+      input_path: "/Header.DM_InteractionVelocityScale"
+      type: AttributeTranslation
+    DM_ScalarBeta:
+      input_path: "/Header.DM_ScalarBeta"
+      type: AttributeTranslation
+    DM_ScalarScreeningLength:
+      input_path: "/Header.DM_ScalarScreeningLength"
+      type: AttributeTranslation
+    CR_Active_Species_ID_List:
+      input_path: "/Header.CR_Active_Species_ID_List"
+      type: AttributeTranslation
+    CR_Bin_Species_ID:
+      input_path: "/Header.CR_Bin_Species_ID"
+      type: AttributeTranslation
+    CR_Bin_Charge:
+      input_path: "/Header.CR_Bin_Charge"
+      type: AttributeTranslation
+    CR_Bin_Min_Rigidity_GV:
+      input_path: "/Header.CR_Bin_Min_Rigidity_GV"
+      type: AttributeTranslation
+    CR_Bin_Med_Rigidity_GV:
+      input_path: "/Header.CR_Bin_Med_Rigidity_GV"
+      type: AttributeTranslation
+    CR_Bin_Max_Rigidity_GV:
+      input_path: "/Header.CR_Bin_Max_Rigidity_GV"
+      type: AttributeTranslation
+    CR_Bin_Energy_vs_Number_GlobalLookupTable:
+      input_path: "/Header.CR_Bin_Energy_vs_Number_GlobalLookupTable"
+      type: AttributeTranslation
+    CR_Primary_to_Secondary_Products_List:
+      input_path: "/Header.CR_Primary_to_Secondary_Products_List"
+      type: AttributeTranslation
+    CR_Bin_Radioactive_Decay_Rate_persecond:
+      input_path: "/Header.CR_Bin_Radioactive_Decay_Rate_persecond"
+      type: AttributeTranslation
+    CR_Bin_Total_Fragmentation_Rate_cmcubedpersecond:
+      input_path: "/Header.CR_Bin_Total_Fragmentation_Rate_cmcubedpersecond"
+      type: AttributeTranslation
+    CR_Bin_Secondary_Product_TargetBins:
+      input_path: "/Header.CR_Bin_Secondary_Product_TargetBins"
+      type: AttributeTranslation
+    CR_Bin_Fragmentation_Coefficients_To_Secondaries:
+      input_path: "/Header.CR_Bin_Fragmentation_Coefficients_To_Secondaries"
+      type: AttributeTranslation
+    Radiation_Intensity_Grid_Direction_Vectors:
+      input_path: "/Header.Radiation_Intensity_Grid_Direction_Vectors"
+      type: AttributeTranslation
+    Flag_CHIMES_Thermal_Evolution_On:
+      input_path: "/Header.Flag_CHIMES_Thermal_Evolution_On"
+      type: AttributeTranslation
+    LEBRON_PhotonMomentum_Coupled_Fraction:
+      input_path: "/Header.LEBRON_PhotonMomentum_Coupled_Fraction"
+      type: AttributeTranslation
+    LEBRON_Sink_PhotonMomentum_Coupled_Fraction:
+      input_path: "/Header.LEBRON_Sink_PhotonMomentum_Coupled_Fraction"
+      type: AttributeTranslation
+    GrainCR_Particle_Type_BitFlag:
+      input_path: "/Header.GrainCR_Particle_Type_BitFlag"
+      type: AttributeTranslation
+    Grain_Internal_Density:
+      input_path: "/Header.Grain_Internal_Density"
+      type: AttributeTranslation
+    Grain_Size_Min:
+      input_path: "/Header.Grain_Size_Min"
+      type: AttributeTranslation
+    Grain_Size_Max:
+      input_path: "/Header.Grain_Size_Max"
+      type: AttributeTranslation
+    Grain_Size_Spectrum_Powerlaw:
+      input_path: "/Header.Grain_Size_Spectrum_Powerlaw"
+      type: AttributeTranslation
+    Grain_Absorbed_vs_Total_Extinction:
+      input_path: "/Header.Grain_Absorbed_vs_Total_Extinction"
+      type: AttributeTranslation
+    Grain_Q_at_MaxGrainSize:
+      input_path: "/Header.Grain_Q_at_MaxGrainSize"
+      type: AttributeTranslation
+    Grain_Charge_Parameter:
+      input_path: "/Header.Grain_Charge_Parameter"
+      type: AttributeTranslation
+    Dust_to_Gas_Mass_Ratio:
+      input_path: "/Header.Dust_to_Gas_Mass_Ratio"
+      type: AttributeTranslation
+    Vertical_Gravity_Strength:
+      input_path: "/Header.Vertical_Gravity_Strength"
+      type: AttributeTranslation
+    Vertical_Grain_Accel:
+      input_path: "/Header.Vertical_Grain_Accel"
+      type: AttributeTranslation
+    Vertical_Grain_Accel_Angle:
+      input_path: "/Header.Vertical_Grain_Accel_Angle"
+      type: AttributeTranslation
+    Pressure_Gradient_Accel:
+      input_path: "/Header.Pressure_Gradient_Accel"
+      type: AttributeTranslation
+    PIC_Charge_to_Mass_Ratio:
+      input_path: "/Header.PIC_Charge_to_Mass_Ratio"
+      type: AttributeTranslation
+    Density_Threshold_For_SF_CodeUnits:
+      input_path: "/Header.Density_Threshold_For_SF_CodeUnits"
+      type: AttributeTranslation
+    SF_Timescale_At_Density_Threshold_CodeUnits:
+      input_path: "/Header.SF_Timescale_At_Density_Threshold_CodeUnits"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_EgySpecSN:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_EgySpecSN"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_FactorSN:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_FactorSN"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_EgySpecCold:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_EgySpecCold"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_FactorEVP:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_FactorEVP"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_FeedbackEnergy:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_FeedbackEnergy"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_TempSupernova:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_TempSupernova"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_TempClouds:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_TempClouds"
+      type: AttributeTranslation
+    Effective_ISM_EOS_Parameter_FactorForSofterEQS:
+      input_path: "/Header.Effective_ISM_EOS_Parameter_FactorForSofterEQS"
+      type: AttributeTranslation
+    LEBRON_Radiation_Pressure_Local_Momentum_Normalization_FromSSP:
+      input_path: "/Header.LEBRON_Radiation_Pressure_Local_Momentum_Normalization_FromSSP"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_Scaling_Key:
+      input_path: "/Header.SubGrid_Wind_Model_Scaling_Key"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_WindEfficiency:
+      input_path: "/Header.SubGrid_Wind_Model_WindEfficiency"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_WindEnergyFraction:
+      input_path: "/Header.SubGrid_Wind_Model_WindEnergyFraction"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_WindFreeTravelMaxTimeFactor:
+      input_path: "/Header.SubGrid_Wind_Model_WindFreeTravelMaxTimeFactor"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_WindFreeTravelDensFac:
+      input_path: "/Header.SubGrid_Wind_Model_WindFreeTravelDensFac"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_VariableWindVelFactor:
+      input_path: "/Header.SubGrid_Wind_Model_VariableWindVelFactor"
+      type: AttributeTranslation
+    SubGrid_Wind_Model_VariableWindSpecMomentum:
+      input_path: "/Header.SubGrid_Wind_Model_VariableWindSpecMomentum"
+      type: AttributeTranslation
+    SNe_Energy_Normalization_FromSSP:
+      input_path: "/Header.SNe_Energy_Normalization_FromSSP"
+      type: AttributeTranslation
+    StellarMassLoss_Rate_Normalization_FromSSP:
+      input_path: "/Header.StellarMassLoss_Rate_Normalization_FromSSP"
+      type: AttributeTranslation
+    StellarMassLoss_Energy_Normalization_FromSSP:
+      input_path: "/Header.StellarMassLoss_Energy_Normalization_FromSSP"
+      type: AttributeTranslation
+    CosmicRay_SNeFraction:
+      input_path: "/Header.CosmicRay_SNeFraction"
+      type: AttributeTranslation
+    HIIRegion_fLum_Coupled:
+      input_path: "/Header.HIIRegion_fLum_Coupled"
+      type: AttributeTranslation
+    AgeTracer_NumberOfBins:
+      input_path: "/Header.AgeTracer_NumberOfBins"
+      type: AttributeTranslation
+    AgeTracerEventsPerTimeBin:
+      input_path: "/Header.AgeTracerEventsPerTimeBin"
+      type: AttributeTranslation
+    AgeTracer_CustomTimeBins:
+      input_path: "/Header.AgeTracer_CustomTimeBins"
+      type: AttributeTranslation
+    AgeTracerBinStart:
+      input_path: "/Header.AgeTracerBinStart"
+      type: AttributeTranslation
+    AgeTracerBinEnd:
+      input_path: "/Header.AgeTracerBinEnd"
+      type: AttributeTranslation
+    Solar_Abundances_Adopted:
+      input_path: "/Header.Solar_Abundances_Adopted"
+      type: AttributeTranslation
+    Metals_Atomic_Number_Or_Key:
+      input_path: "/Header.Metals_Atomic_Number_Or_Key"
+      type: AttributeTranslation
+    ISMDustChem_NumberOfSpecies:
+      input_path: "/Header.ISMDustChem_NumberOfSpecies"
+      type: AttributeTranslation
+    Silicates_Element_Key:
+      input_path: "/Header.Silicates_Element_Key"
+      type: AttributeTranslation
+    Silicates_Element_Number:
+      input_path: "/Header.Silicates_Element_Number"
+      type: AttributeTranslation
+    ISMDustChem_Num_Grain_Size_Bins:
+      input_path: "/Header.ISMDustChem_Num_Grain_Size_Bins"
+      type: AttributeTranslation
+    UnitGrainNumber:
+      input_path: "/Header.UnitGrainNumber"
+      type: AttributeTranslation
+    UnitGrainLength_in_cm:
+      input_path: "/Header.UnitGrainLength_in_cm"
+      type: AttributeTranslation
+    ISMDustChem_Grain_Size_Min:
+      input_path: "/Header.ISMDustChem_Grain_Size_Min"
+      type: AttributeTranslation
+    ISMDustChem_Grain_Size_Max:
+      input_path: "/Header.ISMDustChem_Grain_Size_Max"
+      type: AttributeTranslation
+    Radiation_RHD_Min_Bin_Freq_in_eV:
+      input_path: "/Header.Radiation_RHD_Min_Bin_Freq_in_eV"
+      type: AttributeTranslation
+    Radiation_RHD_Max_Bin_Freq_in_eV:
+      input_path: "/Header.Radiation_RHD_Max_Bin_Freq_in_eV"
+      type: AttributeTranslation
+    InterstellarRadiationFieldStrength:
+      input_path: "/Header.InterstellarRadiationFieldStrength"
+      type: AttributeTranslation
+    Sink_accreted_fraction:
+      input_path: "/Header.Sink_accreted_fraction"
+      type: AttributeTranslation
+    Sink_outflow_velocity:
+      input_path: "/Header.Sink_outflow_velocity"
+      type: AttributeTranslation
+    Sink_outflow_jetlaunchvelscaling:
+      input_path: "/Header.Sink_outflow_jetlaunchvelscaling"
+      type: AttributeTranslation
+    Sink_CosmicRay_Injection_Efficiency:
+      input_path: "/Header.Sink_CosmicRay_Injection_Efficiency"
+      type: AttributeTranslation
+    DarkEnergyConstantW:
+      input_path: "/Header.DarkEnergyConstantW"
+      type: AttributeTranslation
+    TurbDiffusion_Coefficient:
+      input_path: "/Header.TurbDiffusion_Coefficient"
+      type: AttributeTranslation
+    TurbDynamicDiffFac:
+      input_path: "/Header.TurbDynamicDiffFac"
+      type: AttributeTranslation
+    TurbDynamicDiffSmoothing:
+      input_path: "/Header.TurbDynamicDiffSmoothing"
+      type: AttributeTranslation
+    Thermal_ConductionCoeff:
+      input_path: "/Header.Thermal_ConductionCoeff"
+      type: AttributeTranslation
+    ShearViscosityCoeff:
+      input_path: "/Header.ShearViscosityCoeff"
+      type: AttributeTranslation
+    BulkViscosityCoeff:
+      input_path: "/Header.BulkViscosityCoeff"
+      type: AttributeTranslation
+    Effective_Kernel_NeighborNumber_CollisionlessParticles:
+      input_path: "/Header.Effective_Kernel_NeighborNumber_CollisionlessParticles"
+      type: AttributeTranslation
+    ScalarField_hbar_over_mass:
+      input_path: "/Header.ScalarField_hbar_over_mass"
+      type: AttributeTranslation
+    TurbDriving_Global_DecayTime:
+      input_path: "/Header.TurbDriving_Global_DecayTime"
+      type: AttributeTranslation
+    TurbDriving_Global_AccelerationPowerVariable:
+      input_path: "/Header.TurbDriving_Global_AccelerationPowerVariable"
+      type: AttributeTranslation
+    TurbDriving_Global_DtTurbUpdates:
+      input_path: "/Header.TurbDriving_Global_DtTurbUpdates"
+      type: AttributeTranslation
+    TurbDriving_Global_DrivingScaleKMinVar:
+      input_path: "/Header.TurbDriving_Global_DrivingScaleKMinVar"
+      type: AttributeTranslation
+    TurbDriving_Global_DrivingScaleKMaxVar:
+      input_path: "/Header.TurbDriving_Global_DrivingScaleKMaxVar"
+      type: AttributeTranslation
+    TurbDriving_Global_SolenoidalFraction:
+      input_path: "/Header.TurbDriving_Global_SolenoidalFraction"
+      type: AttributeTranslation
+    TurbDriving_Global_DrivingSpectrumKey:
+      input_path: "/Header.TurbDriving_Global_DrivingSpectrumKey"
+      type: AttributeTranslation
+    TurbDriving_Global_DrivingRandomNumberKey:
+      input_path: "/Header.TurbDriving_Global_DrivingRandomNumberKey"
+      type: AttributeTranslation
+    Tillotson_EOS_parameters_for_all_species:
+      input_path: "/Header.Tillotson_EOS_parameters_for_all_species"
+      type: AttributeTranslation
+    SinkAccretionFactor:
+      input_path: "/Header.SinkAccretionFactor"
+      type: AttributeTranslation
+    SinkFeedbackFactor:
+      input_path: "/Header.SinkFeedbackFactor"
+      type: AttributeTranslation
+    SeedSinkMass:
+      input_path: "/Header.SeedSinkMass"
+      type: AttributeTranslation
+    SinkNgbFactor:
+      input_path: "/Header.SinkNgbFactor"
+      type: AttributeTranslation
+    SinkMaxAccretionRadius:
+      input_path: "/Header.SinkMaxAccretionRadius"
+      type: AttributeTranslation
+    SinkEddingtonFactor:
+      input_path: "/Header.SinkEddingtonFactor"
+      type: AttributeTranslation
+    SinkRadiativeEfficiency:
+      input_path: "/Header.SinkRadiativeEfficiency"
+      type: AttributeTranslation
+    SeedSinkMassSigma:
+      input_path: "/Header.SeedSinkMassSigma"
+      type: AttributeTranslation
+    SeedSinkMinRedshift:
+      input_path: "/Header.SeedSinkMinRedshift"
+      type: AttributeTranslation
+    SeedSinkPerUnitMass:
+      input_path: "/Header.SeedSinkPerUnitMass"
+      type: AttributeTranslation
+    SeedReservoirMass:
+      input_path: "/Header.SeedReservoirMass"
+      type: AttributeTranslation
+    MinFoFMassForNewSeed:
+      input_path: "/Header.MinFoFMassForNewSeed"
+      type: AttributeTranslation
+    Cell_Spawn_Mass_ratio:
+      input_path: "/Header.Cell_Spawn_Mass_ratio"
+      type: AttributeTranslation
+    Cell_Spawn_Mass_ratio_MS:
+      input_path: "/Header.Cell_Spawn_Mass_ratio_MS"
+      type: AttributeTranslation
+    Sink_outflow_temperature:
+      input_path: "/Header.Sink_outflow_temperature"
+      type: AttributeTranslation
+    Spawned_Cell_ID:
+      input_path: "/Header.Spawned_Cell_ID"
+      type: AttributeTranslation
+  ParameterFiles:
+    Parameter_file: {constant: N/A, type: ConstantAttributeTranslation}
+    Parameter_file_path: {constant: "", type: ConstantAttributeTranslation}
+  Session_runtime: {constant: -1, type: ConstantAttributeTranslation}
+  Snapshot_date:
+    attribute: timestamp
+    type: SnapshotAttributeTranslation
+  System:
+    constant: ""
+    type: ConstantAttributeTranslation
+  Total_runtime: {constant: -1, type: ConstantAttributeTranslation}
+
+Units:
+  Unit_current_CGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_I}
+  Unit_length_CGS:
+    input_path: "/Header.UnitLength_In_CGS"
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_L}
+  Unit_mass_CGS:
+    input_path: "/Header.UnitMass_In_CGS"
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_M}
+  Unit_temperature_CGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_T}
+  Unit_time_CGS:
+    input_path: "/Header.UnitVelocity_In_CGS"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step: {equation: "y/x", external: "/Header.UnitLength_In_CGS"}
+      SaveQuantityStep: {name: U_t}
+  Gravitational_constant:
+    # Note the typo:
+    input_path: "/Header.Gravitational_Constant_In_Code_Inits"
+    type: AttributeTranslation
+  Unit_current_PhysCGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pI}
+  Unit_length_PhysCGS:
+    input_path: "/Header.UnitLength_In_CGS"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        equation: "x/y * (y1 * y2 + (1 - y2) )"
+        external:
+          - "/Header.HubbleParam"
+          - "/Header.Time" # Scale-factor in comoving runs
+          - "/Header.ComovingIntegrationOn"
+      SaveQuantityStep: {name: U_pL}
+  Unit_mass_PhysCGS:
+    input_path: "/Header.UnitMass_In_CGS"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        equation: "x / y"
+        external:
+          - "/Header.HubbleParam"
+      SaveQuantityStep: {name: U_pM}
+  Unit_temperature_PhysCGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_pT}
+  Unit_time_PhysCGS:
+    input_path: "/Header.UnitVelocity_In_CGS"
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        # (U_L / h * (a*C + (1-C))) / (U_V * (sqrt(a) * C + (1-C)))
+        equation: >
+          "(y / y2 * (y1 * y3 + (1 - y3)))/(x * (np.sqrt(y1) * y3 + (1 - y3)))"
+        external:
+          - "/Header.UnitLength_In_CGS" # y
+          - "/Header.Time" # y1 (scale_factor if ComovingIntegrationOn)
+          - "/Header.HubbleParam" # y2
+          - "/Header.ComovingIntegrationOn" # y3
+      SaveQuantityStep: {name: U_pt}

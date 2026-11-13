@@ -1,0 +1,38 @@
+# Translation style piece for the basic SIDM from GIZMO snapshots
+# This assumes the SIDM is stored as the traditional PartType1
+# This will be based on the public version of gizmo and the gizmo documentation.
+# Important: this is designed assuming a gizmo version > 2021! (Basically, we
+# assume the GIZMO_version header field is present)
+# For older versions, try gizmo-cdm_old.yml or gadget_old.yml
+# Version: v0.1.0
+
+# Options are specified in the GUSTEAU group
+# This section should **not** be read as part of the specification
+GUSTEAU:
+  depends-on: gizmo-pieces/gizmo-dm
+  pipeline_class_additions:
+    # Steps to add to every translation that has the listed (super)class
+
+  pipeline_path_additions:
+    # Steps to add to every translation whose **output** path matches
+    # Patterns are matched a la pathlib's
+    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    # with case-sensitive set to True
+
+PartType1:
+  output_path: /SelfInteractingDarkMatter
+  description: "Self-interacting dark matter with nbody physics"
+  tags:
+    - AGS
+    - Massive
+    - Particles
+  children:
+    # Optional
+    AGS-KernelRadius:
+      description: >
+        The radius of compact support of the SIDM particle's kernel, set by
+        AGS_DesNumNgb
+      output_path: AGS_KernelRadii
+      units: "U_L"
+      a_scale: -1
+      type: ParticleDatasetTranslation
