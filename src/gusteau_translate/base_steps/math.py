@@ -154,6 +154,7 @@ class Math2Step(MathStep):
         equation = _clean_equation_string(self.equation)
         x = field.value
         locals_ = locals()
+        locals_["np"] = np
         for i, (external, columns) in enumerate(
             zip(self._external, self._columns, strict=True)
         ):
