@@ -1,10 +1,13 @@
 import dataclasses
+import logging
 from dataclasses import KW_ONLY, InitVar, dataclass
 
 import numpy as np
 from pydantic import PositiveInt
 
 LOGGER_NAME = "alchemize"
+DDEBUG = logging.DEBUG - 1
+logging.addLevelName(DDEBUG, "DEVDEBUG")
 _ALL_PARTICLE_GROUPS = "*"
 
 

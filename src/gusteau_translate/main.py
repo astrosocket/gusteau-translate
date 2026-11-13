@@ -12,6 +12,7 @@ import gusteau_translate
 
 from .config import (
     _ALL_PARTICLE_GROUPS,
+    DDEBUG,
     LOGGER_NAME,
     PackingCubesOptions,
     TranslationOptions,
@@ -247,7 +248,9 @@ def parse_arguments(argv=None) -> argparse.Namespace:
     verbosity = args.verbose - args.quiet
 
     loglvl = LOGGER.level
-    if verbosity >= 1:
+    if verbosity >= 2:
+        loglvl = DDEBUG
+    elif verbosity >= 1:
         loglvl = logging.DEBUG
     elif verbosity >= 0:
         loglvl = logging.INFO
