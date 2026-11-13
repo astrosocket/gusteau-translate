@@ -200,7 +200,8 @@ def process_attribute(
             return attr.decode("utf8")
 
         if force_scalar:
-            if len(np.array(attr)) == 1:
+            a = np.array(attr)
+            if not a.ndim or len(a) == 1:
                 arr_value = np.array(attr)
                 attr = attr if arr_value.ndim == 0 else arr_value[0]
             else:
