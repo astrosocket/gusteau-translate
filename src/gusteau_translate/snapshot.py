@@ -178,6 +178,11 @@ def create_unit_registry(context: TranslationContext):
         temperature_unit="U_T",
         registry=registry,
     )
+    registry.add(
+        "U_V",
+        float(unyt_quantity(1, "U_L/U_t", registry=registry).to("m/s").v),
+        ud.length / ud.time,
+    )
     LOGGER.debug(f"Created snapshot unit system: {snapshot_units}")
 
 
