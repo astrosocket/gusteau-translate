@@ -5,20 +5,6 @@
 # For older versions, try gizmo-required_old or gadget_old
 # Version: v0.1.0
 
-# Options are specified in the GUSTEAU group
-# This section should **not** be read as part of the specification
-GUSTEAU:
-  pipeline_class_additions:
-    # Steps to add to every translation that has the listed (super)class
-    # Note that we do not add the ParseUnitsStep here because we don't know if
-    # there are even any particle groups!
-
-  pipeline_path_additions:
-    # Steps to add to every translation whose **output** path matches
-    # Patterns are matched a la pathlib's
-    # [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
-    # with case-sensitive set to True
-
 
 # The following fields are in GUSTEAU Spec order (header first, then other
 # required groups)

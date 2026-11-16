@@ -10,14 +10,14 @@ from typing import Annotated, Literal, cast
 import h5py
 import h5py._hl.filters
 import numpy as np
-from annotated_types import MaxLen, MultipleOf
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from annotated_types import MultipleOf
+from pydantic import NonNegativeInt, PositiveInt
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
 from ..cells import CellsMetadata, CellStructure, _create_virtual_dataset
-from ..config import LOGGER_NAME
+from ..config import LOGGER_NAME, FilterInfo, compression_type
 from ..pipeline import NextStep
 from ..translation_base import (
     FieldTranslation,
@@ -40,22 +40,6 @@ def _validate_columns(columns: int | slice | None) -> int | slice | None:
             f"Only integer or slices are supported. Provided {type(columns)}"
         )
     return columns
-
-
-class FilterInfo(BaseModel):
-    filter_code: int
-    flags: NonNegativeInt
-    aux: Annotated[tuple[NonNegativeInt, ...], MaxLen(256)]
-    name: Annotated[str, MaxLen(256)]
-
-
-type compression_type = (
-    Literal["gzip", "lzf", "szip"]
-    | str
-    | int
-    | tuple[int, ...]
-    | tuple[FilterInfo, ...]
-)
 
 
 def particle_group_from_output_path(output_path: str) -> str:
@@ -409,8 +393,15 @@ class DatasetLoadStep(LoadStep):
             indata, shape, new_length, max_index, new_type, field.columns
         )
 
+        # get generic dataset settings
+        generic_settings = context.translation.gusteau.dataset_defaults
+
         # default to gzip compression if none applied
-        in_compression = "gzip" if indata.compression is None else indata.compression
+        in_compression = (
+            generic_settings.compression
+            if indata.compression is None
+            else indata.compression
+        )
 
         field.compression = (
             cast(str | None, in_compression)
@@ -424,28 +415,54 @@ class DatasetLoadStep(LoadStep):
                 for i, name in zip(indata.filter_ids, indata.filter_names, strict=True)
                 if name not in ["scaleoffset", "shuffle", "deflate", "fletcher32"]
             )
+
+        in_options = (
+            generic_settings.compression_opts
+            if indata.compression_opts is None
+            else indata.compression_opts
+        )
         field.compression_opts = (
-            cast(type(field.compression_opts), indata.compression_opts)
+            cast(type(field.compression_opts), in_options)
             if field.compression_opts is None
             else field.compression_opts
         )
+
+        in_offset = (
+            generic_settings.scale_offset_filter
+            if indata.scaleoffset is None
+            else indata.scaleoffset
+        )
         field.scale_offset_filter = (
-            cast(int | None, indata.scaleoffset)
+            cast(int | None, in_offset)
             if field.scale_offset_filter is None
             else field.scale_offset_filter
         )
+        in_shuffle = (
+            indata.shuffle
+            if generic_settings.shuffle_filter is None
+            else generic_settings.shuffle_filter
+        )
         field.shuffle_filter = (
-            cast(bool | None, indata.shuffle)
+            cast(bool | None, in_shuffle)
             if field.shuffle_filter is None
             else field.shuffle_filter
         )
+        in_fletcher = (
+            indata.fletcher32
+            if generic_settings.fletcher32_filter is None
+            else generic_settings.fletcher32_filter
+        )
         field.fletcher32_filter = (
-            cast(bool | None, indata.fletcher32)
+            cast(bool | None, in_fletcher)
             if field.fletcher32_filter is None
             else field.fletcher32_filter
         )
 
-        in_chunks = True if indata.chunks is None else indata.chunks
+        in_chunks = (
+            indata.chunks
+            if generic_settings.chunks is None
+            else generic_settings.chunks
+        )
 
         field.chunks = (
             cast(tuple[int, ...] | bool | None, in_chunks)

@@ -13,9 +13,15 @@ from traceback import TracebackException
 from typing import Any, ClassVar, Protocol, cast
 
 import h5py
+from pydantic import BaseModel
 
 from .cells import CellsMetadata
-from .config import LOGGER_NAME, TranslationOptions, _default_translation_options
+from .config import (
+    LOGGER_NAME,
+    DatasetDefaultOptions,
+    TranslationOptions,
+    _default_translation_options,
+)
 from .pipeline import ErrorHandler, NextStep, Pipeline, PipelineError, PipelineStep
 from .specification import GUSTEAU, DatasetSpec, GroupSpec
 
@@ -316,6 +322,27 @@ class TranslationFactory(Protocol):
     ) -> FieldTranslation[TranslationContext]: ...
 
 
+class GUSTEAU_Options(BaseModel):
+    """Allowed options in the GUSTEAU section of style files"""
+
+    _: KW_ONLY
+    pipeline_class_additions: dict[str, list[str | TranslationStep]] = {}
+    """ Steps to add to every translation that has the listed (super)class"""
+    pipeline_path_additions: dict[str, list[str | TranslationStep]] = {}
+    """
+    Steps to add to every translation whose **output** path matches
+    Patterns are matched a la pathlib's
+    [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    with case-sensitive set to True
+    """
+    depends_on: str | list[str] = []
+    """
+    Style file or list of style files that this style file depends on/overwrites
+    """
+    dataset_defaults: DatasetDefaultOptions = DatasetDefaultOptions()
+    """Options to apply on all datasets unless otherwise specified"""
+
+
 class Translation:
     """
     Translation between a style of snapshot output and the GUSTEAU specification
@@ -323,7 +350,7 @@ class Translation:
 
     out2in: dict[str, FieldTranslation]
     in2out: dict[str, list[FieldTranslation]]
-    gusteau: dict[str, Any]
+    gusteau: GUSTEAU_Options
     _SPEC: ClassVar[GUSTEAU] = GUSTEAU()
     _default_translation_factory: TranslationFactory
     _pipeline_class_additions: dict[str, list[TranslationStep]]
@@ -334,7 +361,7 @@ class Translation:
         self,
         *,
         default_factory: TranslationFactory,
-        gusteau: dict[str, Any] | None = None,
+        gusteau: GUSTEAU_Options | None = None,
     ):
         self.out2in: dict[str, FieldTranslation] = {}
         self.in2out: dict[str, list[FieldTranslation]] = {}
@@ -344,18 +371,16 @@ class Translation:
 
         self._process_gusteau(gusteau)
 
-    def _process_gusteau(self, gusteau: dict[str, Any] | None = None):
-        self.gusteau = {} if gusteau is None else gusteau
-        pipeline_class_additions = cast(
-            dict[str, list[str | TranslationStep]],
-            self.gusteau.get("pipeline_class_additions", {}),
-        )
+    def _process_gusteau(self, gusteau: GUSTEAU_Options | None = None):
+        self.gusteau = GUSTEAU_Options() if gusteau is None else gusteau
         self._pipeline_class_additions = {
             translation_class: [
                 TranslationStep._subclasses[step]() if isinstance(step, str) else step
                 for step in steps
             ]
-            for translation_class, steps in pipeline_class_additions.items()
+            for translation_class, steps in (
+                self.gusteau.pipeline_class_additions.items()
+            )
             if steps
         }
         self._pipeline_class_additions["FieldTranslation"] = (
@@ -368,19 +393,12 @@ class Translation:
             self._pipeline_class_additions.get("all", [])
         )
 
-        pipeline_path_additions = cast(
-            dict[str, list[str | TranslationStep]] | None,
-            self.gusteau.get("pipeline_path_additions", {}),
-        )
-        pipeline_path_additions = (
-            {} if pipeline_path_additions is None else pipeline_path_additions
-        )
         self._pipeline_path_additions = {
             path_pattern: [
                 TranslationStep._subclasses[step]() if isinstance(step, str) else step
                 for step in step_names
             ]
-            for path_pattern, step_names in pipeline_path_additions.items()
+            for path_pattern, step_names in self.gusteau.pipeline_path_additions.items()
         }
 
     def _iterate_fields_only(
