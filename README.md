@@ -10,9 +10,9 @@
 
 Demo translation software for Project GUSTEAU
 
-View the documentation at [](https://gusteau-translate.readthedocs.io).
+View the documentation at <https://gusteau-translate.readthedocs.io>.
 
-See the GUSTEAU specification at [](https://gusteau-spec.readthedocs.io).
+See the GUSTEAU specification at <https://gusteau-spec.readthedocs.io>.
 
 Supported by the National Science Foundation through [Award 2513426](https://www.nsf.gov/awardsearch/show-award/?AWD_ID=2513426).
 
