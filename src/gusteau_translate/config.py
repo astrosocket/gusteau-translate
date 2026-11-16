@@ -94,6 +94,7 @@ class TranslationOptions:
     pc_options: PackingCubesOptions = dataclasses.field(
         default_factory=PackingCubesOptions
     )
+    compression: str | None = None
 
     def __post_init__(self):
         self.packingcubes = [] if self.packingcubes is None else self.packingcubes

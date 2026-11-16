@@ -14,6 +14,7 @@ from .config import (
     _ALL_PARTICLE_GROUPS,
     DDEBUG,
     LOGGER_NAME,
+    DatasetDefaultOptions,
     PackingCubesOptions,
     TranslationOptions,
     ValidationOptions,
@@ -222,6 +223,18 @@ def parse_arguments(argv=None) -> argparse.Namespace:
         help="Path of the translation style file to use",
     )
 
+    default_compression = DatasetDefaultOptions.model_fields["compression"].default
+    parser_trans.add_argument(
+        "-c",
+        "--compression",
+        type=str,
+        help=f"""
+        Override the style-provided default compression option
+        (usually {default_compression}). Compression options cannot be overridden
+        from the command line. For more control, specify in a style file.
+        """,
+    )
+
     _add_packingcubes_subarguments(parser)
 
     parser_trans.add_argument(
@@ -278,6 +291,9 @@ def get_translation(
         return Translation(default_factory=default_translation_factory())
 
     gusteau = GUSTEAU_Options(**gusteau_dict)
+
+    if options and options.compression is not None:
+        gusteau.dataset_defaults.compression = options.compression
 
     if options and options.packingcubes:
         # Add dataset sorting step to all particle datasets
@@ -345,6 +361,7 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
         skip_data=bool(args.skip_data),
         num_partfiles=args.num_partfiles,
         pc_options=pc_options,
+        compression=args.compression,
     )
     LOGGER.info(f"Loaded translation options: {options}")
 
