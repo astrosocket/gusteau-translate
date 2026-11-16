@@ -167,7 +167,7 @@ test-py313 = { features = ["ci"], solve-group = "prod-py313" }
 test = { features = ["ci"], solve-group = "prod" }
 prod-py313 = { features = ["py313"], solve-group = "prod-py13" }
 prod = { features = ["py314"], solve-group = "prod" }
-docs = { features = ["docs"], no-default-feature = true }
+docs = { features = ["docs"], solve-group = "prod"}
 
 [dependency-groups]
 docs = ["markdown-exec[ansi]>=1.12.3,<2"]
