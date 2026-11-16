@@ -232,17 +232,23 @@ def _get_presorted_indices(particle_group: str, infile: h5py.File) -> np.ndarray
     except KeyError as ke:
         LOGGER.debug("Indices not present in input file. Building from Offsets")
 
-    # We already have the cell indices in
-    # infile["/Cells/OffsetsInFile/{particle_group}"], but they're not
-    # usable directly (since that's on a per-file basis)
-    # We need to convert to indices into the vds
     files = infile[f"/Cells/Files/{particle_group}"]
     offsets = infile[f"/Cells/OffsetsInFile/{particle_group}"]
+
+    num_files = max(1, max(files))
+
+    # We already have the cell indices in
+    # infile["/Cells/OffsetsInFile/{particle_group}"], but they're only useable
+    # directly if we have only one file
+    if num_files == 1:
+        # the indices
+        return offsets
+
+    # Indices are not usable directly (since that's on a per-file basis)
+    # We need to convert to indices into the vds
     old_counts = infile[f"/Cells/Counts/{particle_group}"]
 
-    num_files = max(files)
-
-    counts = [[] for i in range(num_files)]
+    counts = [[] for _ in range(num_files)]
     for cell in range(len(offsets)):
         file = files[cell]
         counts[file].append(old_counts[cell])
