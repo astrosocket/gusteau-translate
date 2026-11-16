@@ -10,14 +10,14 @@ from typing import Annotated, Literal, cast
 import h5py
 import h5py._hl.filters
 import numpy as np
-from annotated_types import MaxLen, MultipleOf
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from annotated_types import MultipleOf
+from pydantic import NonNegativeInt, PositiveInt
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
 from ..base_steps.base import LoadStep, SaveStep
 from ..cells import CellsMetadata, CellStructure, _create_virtual_dataset
-from ..config import LOGGER_NAME
+from ..config import LOGGER_NAME, FilterInfo, compression_type
 from ..pipeline import NextStep
 from ..translation_base import (
     FieldTranslation,
@@ -40,22 +40,6 @@ def _validate_columns(columns: int | slice | None) -> int | slice | None:
             f"Only integer or slices are supported. Provided {type(columns)}"
         )
     return columns
-
-
-class FilterInfo(BaseModel):
-    filter_code: int
-    flags: NonNegativeInt
-    aux: Annotated[tuple[NonNegativeInt, ...], MaxLen(256)]
-    name: Annotated[str, MaxLen(256)]
-
-
-type compression_type = (
-    Literal["gzip", "lzf", "szip"]
-    | str
-    | int
-    | tuple[int, ...]
-    | tuple[FilterInfo, ...]
-)
 
 
 def particle_group_from_output_path(output_path: str) -> str:

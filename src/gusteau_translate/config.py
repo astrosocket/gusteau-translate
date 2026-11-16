@@ -1,9 +1,11 @@
 import dataclasses
 import logging
 from dataclasses import KW_ONLY, InitVar, dataclass
+from typing import Annotated, Literal
 
 import numpy as np
-from pydantic import PositiveInt
+from annotated_types import MaxLen, MultipleOf
+from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 LOGGER_NAME = "alchemize"
 DDEBUG = logging.DEBUG - 1
@@ -22,6 +24,56 @@ class PackingCubesOptions:
 
     def __post_init__(self, particle_type_str: str):
         self.particle_types = [s.strip() for s in particle_type_str.split(",")]
+
+
+class FilterInfo(BaseModel):
+    filter_code: int
+    flags: NonNegativeInt
+    aux: Annotated[tuple[NonNegativeInt, ...], MaxLen(256)]
+    name: Annotated[str, MaxLen(256)]
+
+
+type compression_type = (
+    Literal["gzip", "lzf", "szip"]
+    | str
+    | int
+    | tuple[int, ...]
+    | tuple[FilterInfo, ...]
+)
+
+
+@dataclass
+class DatasetDefaultOptions:
+    _: KW_ONLY
+    compression: compression_type | None = "gzip"
+    """Generic dataset compression. Defaults to gzip"""
+    compression_opts: (
+        NonNegativeInt
+        | tuple[
+            Literal["ec", "nn"],
+            Annotated[NonNegativeInt, MultipleOf(2)],
+        ]
+        | None
+    ) = None
+    """Generic dataset compression options. Defaults to None"""
+    scale_offset_filter: NonNegativeInt | bool | None = None
+    """Whether to apply the scale offset filter to generic datasets
+    Default is to use the source dataset's scale_offset value
+    """
+    shuffle_filter: bool | None = None
+    """Whether to apply the shuffle filter to generic datasets
+    Default is to use the source dataset's shuffle_filter flag
+    """
+    fletcher32_filter: bool | None = None
+    """Whether to apply the shuffle filter to generic dataset
+    Default is to use the source dataset's fletcher32_filter flag
+    """
+    chunks: tuple[int, ...] | bool | None = None
+    """
+    Chunk division used for generic datasets. 
+    Default is to use the source dataset's chunks, accounting for column specification,
+    or, if not specified, `True` to have h5py compute them automatically
+    """
 
 
 @dataclass

@@ -13,9 +13,15 @@ from traceback import TracebackException
 from typing import Any, ClassVar, Protocol, cast
 
 import h5py
+from pydantic import BaseModel
 
 from .cells import CellsMetadata
-from .config import LOGGER_NAME, TranslationOptions, _default_translation_options
+from .config import (
+    LOGGER_NAME,
+    DatasetDefaultOptions,
+    TranslationOptions,
+    _default_translation_options,
+)
 from .pipeline import ErrorHandler, NextStep, Pipeline, PipelineError, PipelineStep
 from .specification import GUSTEAU, DatasetSpec, GroupSpec
 
@@ -314,6 +320,27 @@ class TranslationFactory(Protocol):
         pipeline: TranslationPipeline | None = None,
         **kwargs,
     ) -> FieldTranslation[TranslationContext]: ...
+
+
+class GUSTEAU_Options(BaseModel):
+    """Allowed options in the GUSTEAU section of style files"""
+
+    _: KW_ONLY
+    pipeline_class_additions: dict[str, list[str | TranslationStep]] = {}
+    """ Steps to add to every translation that has the listed (super)class"""
+    pipeline_path_additions: dict[str, list[str | TranslationStep]] = {}
+    """
+    Steps to add to every translation whose **output** path matches
+    Patterns are matched a la pathlib's
+    [full_match](https://docs.python.org/3/library/pathlib.html#pathlib.PurePath.full_match)
+    with case-sensitive set to True
+    """
+    depends_on: str | list[str] = []
+    """
+    Style file or list of style files that this style file depends on/overwrites
+    """
+    dataset_defaults: DatasetDefaultOptions = DatasetDefaultOptions()
+    """Options to apply on all datasets unless otherwise specified"""
 
 
 class Translation:
