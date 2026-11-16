@@ -6,6 +6,7 @@ import h5py
 from ..config import LOGGER_NAME
 from ..translation_base import (
     FieldTranslation,
+    GUSTEAU_Options,
     Translation,
     TranslationContext,
     TranslationFactory,
@@ -188,7 +189,7 @@ def from_dict(
     doc: dict[str, dict_info_type],
     *,
     default_factory: TranslationFactory,
-    gusteau: dict[str, Any] | None = None,
+    gusteau: GUSTEAU_Options | None = None,
 ) -> Translation:
     translation = Translation(default_factory=default_factory, gusteau=gusteau)
     recurse_groups(doc, translation)

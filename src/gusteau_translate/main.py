@@ -3,7 +3,7 @@ import importlib.util
 import logging
 import sys
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 __lazy_modules__ = ["packingcubes"]
 import ruamel.yaml as pyyaml
@@ -21,8 +21,8 @@ from .config import (
 from .snapshot import Snapshot
 from .styles import parse_modular_style_file
 from .translation_base import (
+    GUSTEAU_Options,
     Translation,
-    TranslationStep,
 )
 from .translations.translation_loader import (
     default_translation_factory,
@@ -269,46 +269,36 @@ def get_translation(
     translation_file = Path(translation_file)
     yaml = pyyaml.YAML(typ="safe", pure=True)
     try:
-        doc, gusteau = parse_modular_style_file(translation_file, yaml=yaml)
+        doc, gusteau_dict = parse_modular_style_file(translation_file, yaml=yaml)
     except FileNotFoundError:
         LOGGER.warning(
             f"Could not find style file {translation_file} as file or as built in. "
             "Using identity"
         )
         return Translation(default_factory=default_translation_factory())
+
+    gusteau = GUSTEAU_Options(**gusteau_dict)
+
     if options and options.packingcubes:
         # Add dataset sorting step to all particle datasets
-        pipeline_class_additions = cast(
-            dict[str, list[str]] | None, gusteau.get("pipeline_class_additions")
-        )
-        pipeline_class_additions = (
-            {} if pipeline_class_additions is None else pipeline_class_additions
-        )
-        pipeline_class_additions.setdefault("ParticleDatasetTranslation", []).append(
-            "SortDatasetStep"
-        )
-        gusteau["pipeline_class_additions"] = pipeline_class_additions
+
+        gusteau.pipeline_class_additions.setdefault(
+            "ParticleDatasetTranslation", []
+        ).append("SortDatasetStep")
 
         # Add dataset cubing step to all particle groups included
-        pipeline_path_additions = cast(
-            dict[str, list[str | TranslationStep]] | None,
-            gusteau.get("pipeline_path_additions"),
-        )
-        pipeline_path_additions = (
-            {} if pipeline_path_additions is None else pipeline_path_additions
-        )
         for pg in options.packingcubes:
-            pipeline_path_additions.setdefault(f"/{pg}/Coordinates", []).append(
+            gusteau.pipeline_path_additions.setdefault(f"/{pg}/Coordinates", []).append(
                 "PackCubesStep"
             )
 
         from .translations.attribute_translation import SaveQuantityStep
 
         # Add saving the bounding box
-        pipeline_path_additions.setdefault("/Header.Bounding_box", []).append(
+        gusteau.pipeline_path_additions.setdefault("/Header.Bounding_box", []).append(
             SaveQuantityStep(name="Bounding_box")
         )
-        gusteau["pipeline_path_additions"] = pipeline_path_additions
+
     return from_dict(
         doc, default_factory=default_translation_factory(), gusteau=gusteau
     )
