@@ -25,6 +25,7 @@ icon: lucide/waypoints
             - AttributeSaveStep
             - SaveQuantityStep
             - SnapshotAttributeLoadStep
+            - process_attribute
 
 ### Datasets
 

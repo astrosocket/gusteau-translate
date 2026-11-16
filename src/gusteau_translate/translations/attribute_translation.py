@@ -160,9 +160,11 @@ def process_attribute(
     """Process an attribute into a more useful type
 
     Convert an attribute in a few ways:
-        1. Change the dtype of an array/number
-        2. Convert fixed-length strings to variable-length
-        3. Coerce values to scalars (eg np.array([1], dtype=np.uint32) -> np.uint32(1))
+
+      1. Change the dtype of an array/number
+      2. Convert fixed-length strings to variable-length
+      3. Coerce values to scalars
+         (e.g. `np.array([1], dtype=np.uint32)` -> `np.uint32(1)`)
 
     Parameters
     ----------
