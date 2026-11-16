@@ -1,11 +1,11 @@
 import dataclasses
 import logging
 from dataclasses import KW_ONLY, InitVar, dataclass
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 import numpy as np
 from annotated_types import MaxLen, MultipleOf
-from pydantic import BaseModel, NonNegativeInt, PositiveInt
+from pydantic import BaseModel, NonNegativeInt, PositiveInt, model_validator
 
 LOGGER_NAME = "alchemize"
 DDEBUG = logging.DEBUG - 1
@@ -42,8 +42,7 @@ type compression_type = (
 )
 
 
-@dataclass
-class DatasetDefaultOptions:
+class DatasetDefaultOptions(BaseModel):
     _: KW_ONLY
     compression: compression_type | None = "gzip"
     """Generic dataset compression. Defaults to gzip"""
@@ -68,12 +67,21 @@ class DatasetDefaultOptions:
     """Whether to apply the shuffle filter to generic dataset
     Default is to use the source dataset's fletcher32_filter flag
     """
-    chunks: tuple[int, ...] | bool | None = None
+    chunks: Literal[True] | None = True
     """
-    Chunk division used for generic datasets. 
+    Whether chunking should be used for generic datasets. 
     Default is to use the source dataset's chunks, accounting for column specification,
-    or, if not specified, `True` to have h5py compute them automatically
+    or, if not specified, `True` to have h5py compute them automatically.
+    Note that if `compression` is specified, chunks **must** be `True`.
     """
+
+    @model_validator(mode="after")
+    def check_chunks_with_compression(self) -> Self:
+        if self.compression is not None and self.chunks is None:
+            raise ValueError(
+                "Chunks cannot be None if a compression method is specified"
+            )
+        return self
 
 
 @dataclass
