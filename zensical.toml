@@ -387,7 +387,7 @@ inherited_members = true
 signature_crossrefs = true
 show_source = false
 docstring_section_style = "list"
-backlinks = true
+backlinks = "tree"
 parameter_headings = false
 scoped_crossrefs = true
 show_symbol_type_heading = true
@@ -396,4 +396,4 @@ separate_signature = true
 show_signature_annotations = false
 merge_init_into_class = true
 docstring_options = {"ignore_init_summary" = true}
-extensions = {"griffe_pydantic" = {"schema" = true}}
+extensions = [{"griffe_pydantic" = {"schema" = true}}]
