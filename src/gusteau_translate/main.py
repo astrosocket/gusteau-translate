@@ -283,12 +283,10 @@ def get_translation(
     yaml = pyyaml.YAML(typ="safe", pure=True)
     try:
         doc, gusteau_dict = parse_modular_style_file(translation_file, yaml=yaml)
-    except FileNotFoundError:
-        LOGGER.warning(
-            f"Could not find style file {translation_file} as file or as built in. "
-            "Using identity"
-        )
-        return Translation(default_factory=default_translation_factory())
+    except FileNotFoundError as fnferr:
+        raise FileNotFoundError(
+            f"Could not find style file {translation_file} as file or as built in."
+        ) from fnferr
 
     gusteau = GUSTEAU_Options(**gusteau_dict)
 
