@@ -55,7 +55,7 @@ def _process_constant(constant, *, force_scalar: bool, dtype: str | None):
         raise TranslationError("Attempting to force an array to a scalar")
     # Apply dtype if present and not a string
     if dtype is not None:
-        if isinstance(constant, str):
+        if isinstance(constant, str) and dtype != "str":
             raise TranslationError("dtype cannot be applied to str input")
         constant = np.array(constant, dtype=dtype)
     return constant
