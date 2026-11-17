@@ -128,7 +128,7 @@ style = [{task="format"}, {task="check"}, {task="pylint"}, {task="ymllint"}]
 pre-commit = "*"
 
 [tool.pixi.feature.build.dependencies]
-twine = "*"
+twine = ">=7.0.0,<8"
 
 [tool.pixi.feature.ci.dependencies]
 pytest = "*"
@@ -171,4 +171,5 @@ docs = { features = ["docs"], solve-group = "prod"}
 
 [dependency-groups]
 docs = ["markdown-exec[ansi]>=1.13.0,<2"]
+build = ["build>=1.6.1,<2"]
 
