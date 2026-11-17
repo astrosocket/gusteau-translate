@@ -111,7 +111,7 @@ def parse_style_file(style_file: str | Path, **kwargs) -> tuple[dict, dict[str, 
     text, path = read_style_file(style_file, **kwargs)
     style = _load_style_file(Path(path), text=text, **kwargs)
     top_level = {k.lower(): k for k in style}
-    gusteau = style.pop(top_level["gusteau"], {})
+    gusteau = style.pop(top_level.get("gusteau", "GUSTEAU"), {})
     return style, gusteau
 
 
