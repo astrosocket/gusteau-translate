@@ -78,7 +78,8 @@ def read_style_file(style_file: str | Path, **kwargs) -> tuple[str, str]:
             style_file = style_file.with_suffix(".yml")
         style_path = importlib.resources.files(anchor).joinpath("styles", style_file)
         if not style_path.is_file():
-            raise FileNotFoundError(f"Requested style ({style_file.stem}) not found.")
+            LOGGER.log(DDEBUG, f"File {style_path} does not exist")
+            raise FileNotFoundError(f"Requested style ({style_file}) not found.")
         with importlib.resources.as_file(style_path) as path:
             LOGGER.debug(f"Loading style file {style_file} from built-ins")
             return path.read_text("utf-8"), "{built-ins}/" + str(style_file)
