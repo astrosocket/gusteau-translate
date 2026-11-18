@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 
 from ..base_steps.base import LoadStep, SaveStep
-from ..config import LOGGER_NAME
+from ..config import DDEBUG, LOGGER_NAME
 from ..pipeline import NextStep
 from ..styles import read_style_file
 from ..translation_base import (
@@ -86,7 +86,7 @@ class ConstantAttributeTranslation(AttributeTranslation):
 
 
 @dataclass
-class ConditionalRequiredAttributeTranslation(AttributeTranslation):
+class ConditionalRequiredAttributeTranslation(ConstantAttributeTranslation):
     """
     Attributes that are only present if another attribute is true
 
@@ -98,7 +98,7 @@ class ConditionalRequiredAttributeTranslation(AttributeTranslation):
     constant: InitVar[Any]
 
     def __post_init__(self, constant: Any):
-        super().__post_init__()
+        super().__post_init__(constant)
         self.pipeline.remove("AttributeLoadStep")
         self.pipeline.append(ConditionalLoadStep())
         self.input_description = f"Dependent on {self.depends_on}, otherwise {constant}"
@@ -290,12 +290,27 @@ class ConditionalLoadStep(AttributeLoadStep):
         )
 
         if dep_field:
+            LOGGER.log(
+                DDEBUG,
+                (
+                    f"Conditional field {field.depends_on} True,",
+                    " loading {field.input_path}",
+                ),
+            )
             field._value = _load_attribute(
                 context.infile,
                 field.input_path,
                 dtype=field.dtype,
                 force_scalar=field.force_scalar,
                 required=field._required,
+            )
+        else:
+            LOGGER.log(
+                DDEBUG,
+                (
+                    f"Conditional field {field.depends_on} False/None,"
+                    " using constant {field._value}"
+                ),
             )
         # if dep_field is not present, we don't need to do anything because we
         # already set value on initialization
