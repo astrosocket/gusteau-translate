@@ -57,12 +57,16 @@ class LinkStep(TranslationStep):
 
     priority: int = 200
     _: KW_ONLY
-    path: str
+    path: str | list[str]
+
+    def __post_init__(self):
+        self.path = [self.path] if isinstance(self.path, str) else self.path
 
     def __call__(self, context: TranslationContext, next_step: NextStep):
         field = context.field
         outfile = context.outfile
-        outfile[self.path] = h5py.SoftLink(field.output_path)
+        for path in self.path:
+            outfile[path] = h5py.SoftLink(field.output_path)
         next_step(context)
 
 
