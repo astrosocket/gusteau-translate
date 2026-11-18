@@ -120,12 +120,17 @@ class Math2Step(MathStep):
         `external_columns[i] is None` is equivalent to all columns for `external[i]`.
     force_scalar: bool, optional
         Attempt to make output a scalar quantity instead of an array
+    fallback: dict[str, float | str]
+        Optional dictionary providing possible fallback quantities if an
+        external field is not present. If a string is provided, attempt to use
+        quantities saved via SaveStep
     """
 
     _: KW_ONLY
     external: InitVar[str | list[str]]
     external_columns: InitVar[np.ndarray | list[np.ndarray | None] | None] = None
     force_scalar: bool = False
+    fallback: dict[str, int | float | str] = field(default_factory=dict)
 
     _external: list[str] = field(init=False)
     _columns: list[np.ndarray | None] = field(init=False)
@@ -158,12 +163,24 @@ class Math2Step(MathStep):
         for i, (external, columns) in enumerate(
             zip(self._external, self._columns, strict=True)
         ):
-            locals_[f"y{i if i else ''}"] = _load_external_field(
-                external,
-                columns,
-                context.infile,
-                skip_data=context.options.skip_data,
+            local_name = f"y{i if i else ''}"
+            try:
+                locals_[local_name] = _load_external_field(
+                    external,
+                    columns,
+                    context.infile,
+                    skip_data=context.options.skip_data,
+                )
+                continue
+            except KeyError as KE:
+                if external not in self.fallback:
+                    raise KE
+            # fallback logic
+            fallback = self.fallback[external]
+            locals_[local_name] = (
+                context.quantities[fallback] if isinstance(fallback, str) else fallback
             )
+
         field.value = np.array(eval(equation, locals=locals_)).astype(field.dtype)
         if self.force_scalar:
             if len(field.value) > 1:
