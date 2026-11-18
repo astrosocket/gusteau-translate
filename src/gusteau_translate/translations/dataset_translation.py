@@ -11,7 +11,7 @@ import h5py
 import h5py._hl.filters
 import numpy as np
 from annotated_types import MultipleOf
-from pydantic import NonNegativeInt, PositiveInt
+from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 
@@ -325,6 +325,88 @@ class ConstantParticleDatasetTranslation(
     """
 
 
+class _DatasetOptions(BaseModel):
+    """Class containing possible dataset options"""
+
+    _: KW_ONLY
+    compression: compression_type | None = None
+    """Dataset compression. Defaults to None"""
+    compression_opts: (
+        NonNegativeInt
+        | tuple[
+            Literal["ec", "nn"],
+            Annotated[NonNegativeInt, MultipleOf(2)],
+        ]
+        | None
+    )
+    """Dataset compression options."""
+    scale_offset_filter: NonNegativeInt | None
+    """Dataset scale offset filter."""
+    shuffle_filter: bool
+    """Dataset shuffle filter."""
+    fletcher32_filter: bool
+    """Dataset fletcher32 filter"""
+    chunks: tuple[int, ...] | None
+    """Dataset chunks. Default is None"""
+    filter_ids: tuple[int, ...]
+    """The numeric filter IDs (as stored in the file) of the filters in use."""
+    filter_names: tuple[str, ...]
+    """The string names (as stored in the file) of the filters in use."""
+
+
+def _get_actual_dataset_properties(dataset: h5py.Dataset) -> _DatasetOptions:
+    """Get actual dataset options, regardless of virtual dataset status
+
+    If indata is a _virtual_ dataset, the various fields like compression and
+    fletcher32 are not filled, even if the fields on the subdatasets are.
+    This makes sense in the general case, where a virtual dataset could be
+    created from sources with heterogenous attributes. We can generally assume,
+    however, that our combined datasets will share their attributes. So
+    `vsource.compression` will be the same for all vsources.
+
+    So if we have a virtual dataset, we should grab the attributes from the first
+    source dataset when reading in the attributes.
+
+    Parameters
+    ----------
+    dataset: h5py.Dataset
+        The dataset to get the properties from
+
+    Returns
+    -------
+    :_DatasetOptions
+        Collection of properties from dataset or the first source dataset
+    """
+    if dataset.is_virtual:
+        # do stuff
+        vsources = dataset.virtual_sources()[0]
+        file_name = vsources.file_name
+        dset_name = vsources.dset_name
+        with h5py.File(file_name) as file:
+            source = cast(h5py.Dataset, file[dset_name])
+            return _DatasetOptions(
+                compression=source.compression,
+                compression_opts=source.compression_opts,
+                scale_offset_filter=source.scaleoffset,
+                shuffle_filter=source.shuffle,
+                fletcher32_filter=source.fletcher32,
+                chunks=source.chunks,
+                filter_ids=source.filter_ids,
+                filter_names=source.filter_names,
+            )
+
+    return _DatasetOptions(
+        compression=dataset.compression,
+        compression_opts=dataset.compression_opts,
+        scale_offset_filter=dataset.scaleoffset,
+        shuffle_filter=dataset.shuffle,
+        fletcher32_filter=dataset.fletcher32,
+        chunks=dataset.chunks,
+        filter_ids=dataset.filter_ids,
+        filter_names=dataset.filter_names,
+    )
+
+
 def _load_directly(
     indata: h5py.Dataset,
     shape: tuple[int, ...],
@@ -395,80 +477,73 @@ class DatasetLoadStep(LoadStep):
 
         # get generic dataset settings
         generic_settings = context.translation.gusteau.dataset_defaults
+        actual_settings = _get_actual_dataset_properties(indata)
 
         # default to gzip compression if none applied
         in_compression = (
             generic_settings.compression
-            if indata.compression is None
-            else indata.compression
+            if actual_settings.compression is None
+            else actual_settings.compression
         )
 
         field.compression = (
-            cast(str | None, in_compression)
-            if field.compression is None
-            else field.compression
+            in_compression if field.compression is None else field.compression
         )
         if field.compression == "unknown":
             # need to read the filter ids/filter_names field
             field.compression = tuple(
                 i
-                for i, name in zip(indata.filter_ids, indata.filter_names, strict=True)
+                for i, name in zip(
+                    actual_settings.filter_ids,
+                    actual_settings.filter_names,
+                    strict=True,
+                )
                 if name not in ["scaleoffset", "shuffle", "deflate", "fletcher32"]
             )
 
         in_options = (
             generic_settings.compression_opts
-            if indata.compression_opts is None
-            else indata.compression_opts
+            if actual_settings.compression_opts is None
+            else actual_settings.compression_opts
         )
         field.compression_opts = (
-            cast(type(field.compression_opts), in_options)
-            if field.compression_opts is None
-            else field.compression_opts
+            in_options if field.compression_opts is None else field.compression_opts
         )
 
         in_offset = (
             generic_settings.scale_offset_filter
-            if indata.scaleoffset is None
-            else indata.scaleoffset
+            if actual_settings.scale_offset_filter is None
+            else actual_settings.scale_offset_filter
         )
         field.scale_offset_filter = (
-            cast(int | None, in_offset)
+            in_offset
             if field.scale_offset_filter is None
             else field.scale_offset_filter
         )
         in_shuffle = (
-            indata.shuffle
+            actual_settings.shuffle_filter
             if generic_settings.shuffle_filter is None
             else generic_settings.shuffle_filter
         )
         field.shuffle_filter = (
-            cast(bool | None, in_shuffle)
-            if field.shuffle_filter is None
-            else field.shuffle_filter
+            in_shuffle if field.shuffle_filter is None else field.shuffle_filter
         )
         in_fletcher = (
-            indata.fletcher32
+            actual_settings.fletcher32_filter
             if generic_settings.fletcher32_filter is None
             else generic_settings.fletcher32_filter
         )
         field.fletcher32_filter = (
-            cast(bool | None, in_fletcher)
-            if field.fletcher32_filter is None
-            else field.fletcher32_filter
+            in_fletcher if field.fletcher32_filter is None else field.fletcher32_filter
         )
 
         in_chunks = (
-            indata.chunks
+            actual_settings.chunks
             if generic_settings.chunks is None
             else generic_settings.chunks
         )
 
-        field.chunks = (
-            cast(tuple[int, ...] | bool | None, in_chunks)
-            if field.chunks is None
-            else field.chunks
-        )
+        field.chunks = in_chunks if field.chunks is None else field.chunks
         if isinstance(field.chunks, tuple):
             chunk_height = 1 if context.options.skip_data else field.chunks[0]
             if field.columns is not None:
