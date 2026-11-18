@@ -24,6 +24,7 @@ from .cells import (
     generate_cells,
 )
 from .config import (
+    DDEBUG,
     LOGGER_NAME,
     TranslationOptions,
     ValidationOptions,
@@ -165,6 +166,7 @@ def create_unit_registry(context: TranslationContext):
         "U_t": (ud.time, "s", "s"),
     }
     for uname, (dimension, cgs_unit, mks_unit) in dimensions.items():
+        LOGGER.log(DDEBUG, f"Setting mks quantity {uname} to {quantities.get(uname)}")
         mks = unyt_quantity(quantities.get(uname), cgs_unit).to(mks_unit)
         registry.add(uname, base_value=float(mks.v), dimensions=dimension)
     LOGGER.debug(f"Created unit registry with lut: {registry.lut}")
