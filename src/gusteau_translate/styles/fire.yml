@@ -1,21 +1,471 @@
-# Translation style for FIRE snapshots
-# This will contain modifications to the gizmo base style from the FIRE
-# collaboration.
-# Version: v0.1.0
+# Translation style for standard-physics cosmological FIRE-2 Core snapshots
+# Based on the public Latte m12i_res7100 snapshot 600 and the FIRE-2 data
+# release documentation (Wetzel et al. 2023, https://arxiv.org/abs/2202.06969).
+# Version: v0.3.0
 
-# Options are specified in the GUSTEAU group
-# This section should **not** be read as part of the specification
 GUSTEAU:
-  depends-on: gizmo
+  pipeline_class_additions:
+    ParticleDatasetTranslation:
+      - ParseUnitsStep
 
-
-# The following fields are in GUSTEAU Spec order (header first, then other
-# required groups)
-
-# Required groups
 Header:
-  # Note that a number of these fields are single element arrays instead of
-  # scalars
-  Code: {constant: FIRE, type: ConstantAttributeTranslation}
+  Code: {constant: GIZMO, type: ConstantAttributeTranslation}
   Source: {constant: fire, type: ConstantAttributeTranslation}
   Source_file: {file_path: fire, type: FileContentsTranslation}
+  # Gadget particle slots 0, 1, 2, and 4 are the FIRE-2 Core species.
+  # Only list populated species, since early snapshots can predate star formation.
+  Particle_names:
+    constant: [Gas, DarkMatter, LowResolutionDarkMatter, Stars]
+    type: ConstantAttributeTranslation
+    dtype: object
+    pipeline:
+      Math2Step:
+        external: &count_fields [/Header.NumPart_Total, /Header.NumPart_Total_HighWord]
+        equation: "x[((y | y1) != 0)[[0, 1, 2, 4]]]"
+      SaveQuantityStep: {name: Particle_names}
+  Particle_numbers:
+    input_path: /Header.NumPart_Total
+    type: AttributeTranslation
+    dtype: uint64
+    pipeline:
+      Math2Step:
+        external: /Header.NumPart_Total_HighWord
+        equation: "x + (np.uint64(y) << 32)"
+        priority: 1
+      ReorderColumnStep: {priority: 2, new_width: 4, col_indices: [0, 1, 2, 4]}
+      MathStep: {priority: 3, equation: "x[x != 0]"}
+      SaveQuantityStep: {name: Particle_numbers}
+  Initial_mass_table:
+    input_path: /Header.MassTable
+    type: AttributeTranslation
+    pipeline:
+      Math2Step:
+        external: *count_fields
+        equation: "x[((y | y1) != 0) & [True, True, True, False, True, False]]"
+  Bounding_box:
+    input_path: /Header.BoxSize
+    type: AttributeTranslation
+    pipeline:
+      ReorderColumnStep: {new_width: 6, col_indices: [-1, -1, -1, 0, 0, 0]}
+  Time:
+    type: AttributeTranslation
+    pipeline:
+      MathStep: {equation: "-x"}
+  Run_name: {constant: "", type: ConstantAttributeTranslation}
+  Num_files_per_snapshot:
+    input_path: /Header.NumFilesPerSnapshot
+    type: AttributeTranslation
+  Dimension: {constant: 3, type: ConstantAttributeTranslation}
+  Part_type_mapping:
+    constant: [1, 1, 1, 0, 1, 0]
+    type: ConstantAttributeTranslation
+    dtype: int32
+    pipeline:
+      Math2Step: {external: *count_fields, equation: "x & ((y | y1) != 0)"}
+      MathStep: {priority: 2, equation: "np.where(x, np.cumsum(x) - 1, -1)"}
+  Snapshot_date: {attribute: timestamp, type: SnapshotAttributeTranslation}
+  Redshift: {type: AttributeTranslation}
+  File_index: {output_path: /Header.File_index, type: SkipTranslation}
+  # Gadget-compatible fields, with counts finalized by the translator.
+  NumPart_ThisFile: {dtype: uint32, type: AttributeTranslation}
+  MassTable: {type: AttributeTranslation}
+  Flag_Sfr: {dtype: int32, type: AttributeTranslation}
+  Flag_Feedback: {dtype: int32, type: AttributeTranslation}
+  NumPart_Total: {dtype: int32, type: AttributeTranslation}
+  Flag_Cooling: {dtype: int32, type: AttributeTranslation}
+  BoxSize: {type: AttributeTranslation}
+  Omega0: {type: AttributeTranslation}
+  OmegaLambda: {type: AttributeTranslation}
+  HubbleParam: {type: AttributeTranslation}
+  Flag_StellarAge: {dtype: int32, type: AttributeTranslation}
+  Flag_Metals: {dtype: int32, type: AttributeTranslation}
+  NumPart_Total_HW:
+    input_path: /Header.NumPart_Total_HighWord
+    type: AttributeTranslation
+    dtype: int32
+  Flag_Entropy_ICs: {constant: 0, dtype: int32, type: ConstantAttributeTranslation}
+
+Code:
+  Code: {constant: GIZMO, type: ConstantAttributeTranslation}
+  Code_version: {constant: "", type: ConstantAttributeTranslation}
+  Code_hash: {constant: "", type: ConstantAttributeTranslation}
+  HDF5_version: {constant: "", type: ConstantAttributeTranslation}
+  VCS: {constant: git, type: ConstantAttributeTranslation}
+  VCS_id: {constant: "", type: ConstantAttributeTranslation}
+  VCS_repository:
+    constant: https://github.com/pfhopkins/gizmo-public
+    type: ConstantAttributeTranslation
+  Library_versions: {constant: [""], type: ConstantAttributeTranslation}
+  Configuration_options: {constant: "", type: ConstantAttributeTranslation}
+
+Cosmology:
+  Is_cosmological: {constant: 1, type: ConstantAttributeTranslation}
+  Omega_matter: {input_path: /Header.Omega0, type: AttributeTranslation}
+  Omega_lambda: {input_path: /Header.OmegaLambda, type: AttributeTranslation}
+  h:
+    input_path: /Header.HubbleParam
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: h}
+  Redshift: {input_path: /Header.Redshift, type: AttributeTranslation}
+  Scale_factor:
+    input_path: /Header.Time
+    type: AttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: a}
+  Omega_baryon: {input_path: /Header.OmegaBaryon, type: AttributeTranslation}
+
+RunInfo:
+  Parameters:
+    CompactLevel: {input_path: /Header.CompactLevel, type: AttributeTranslation}
+    Compactify_Version:
+      input_path: /Header.Compactify_Version
+      type: AttributeTranslation
+    Flag_DoublePrecision:
+      input_path: /Header.Flag_DoublePrecision
+      type: AttributeTranslation
+    Flag_IC_Info: {input_path: /Header.Flag_IC_Info, type: AttributeTranslation}
+  ParameterFiles:
+    Parameter_file: {constant: N/A, type: ConstantAttributeTranslation}
+    Parameter_file_path: {constant: "", type: ConstantAttributeTranslation}
+  System: {constant: "", type: ConstantAttributeTranslation}
+  Session_runtime: {constant: -1, type: ConstantAttributeTranslation}
+  Total_runtime: {constant: -1, type: ConstantAttributeTranslation}
+  Snapshot_date: {attribute: timestamp, type: SnapshotAttributeTranslation}
+
+Units:
+  # The released m12i header omits unit attributes. Its published GIZMO
+  # parameters use kpc, 1e10 solar masses, and km/s as the base units.
+  Unit_length_CGS:
+    constant: &length_cgs 3.085678e+21
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_L}
+  Unit_mass_CGS:
+    constant: &mass_cgs 1.989e+43
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_M}
+  Unit_time_CGS:
+    constant: &time_cgs 3.085678e+16  # Unit length divided by 1e5 cm/s
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_t}
+  Unit_temperature_CGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_T}
+  Unit_current_CGS:
+    constant: 1
+    type: ConstantAttributeTranslation
+    pipeline:
+      SaveQuantityStep: {name: U_I}
+  Unit_length_PhysCGS:
+    constant: *length_cgs
+    type: ConstantAttributeTranslation
+    pipeline:
+      Math2Step: {external: [/Header.Time, /Header.HubbleParam], equation: "x*y/y1"}
+  Unit_mass_PhysCGS:
+    constant: *mass_cgs
+    type: ConstantAttributeTranslation
+    pipeline:
+      Math2Step: {external: /Header.HubbleParam, equation: "x/y"}
+  Unit_time_PhysCGS:
+    constant: *time_cgs
+    type: ConstantAttributeTranslation
+    pipeline:
+      Math2Step:
+        external: [/Header.Time, /Header.HubbleParam]
+        equation: "x*np.sqrt(y)/y1"
+  Unit_temperature_PhysCGS: {constant: 1, type: ConstantAttributeTranslation}
+  Unit_current_PhysCGS: {constant: 1, type: ConstantAttributeTranslation}
+
+PartType0:
+  output_path: /Gas
+  type: GroupTranslation
+  has_particles: true
+  description: Baryonic gas cells with hydrodynamics and chemistry
+  tags: [Particles, Massive, Hydro, Abundance, MassFraction, Metals]
+  pipeline:
+    LinkStep: {path: /PartType0}
+  children:
+    Aliases: {constant: [PartType0], type: ConstantAttributeTranslation}
+    Coordinates: &coordinates
+      description: Comoving position in the simulation box
+      units: U_L
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    Velocities: &velocities
+      description: Peculiar velocity divided by the square root of the scale factor
+      units: U_V
+      a_scale: 0.5
+      type: ParticleDatasetTranslation
+    Masses: &masses
+      description: Particle mass
+      units: U_M
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    ParticleIDs: &ids
+      description: Simulation particle ID, which can be shared by split particles
+      type: ParticleDatasetTranslation
+    ParticleChildIDsNumber: &split_trees
+      output_path: SplitTrees
+      description: Child ID encoding the particle's branch in the split tree
+      type: ParticleDatasetTranslation
+    ParticleIDGenerationNumber: &split_counts
+      output_path: SplitCounts
+      description: Number of particle splits in the recorded ancestry
+      type: ParticleDatasetTranslation
+    Potential: &potentials
+      output_path: Potentials
+      description: Gravitational potential per unit mass with an arbitrary zero point
+      units: "U_V**2"
+      # The FIRE team's GizmoAnalysis reader divides this field by the scale factor.
+      a_scale: -1
+      type: ParticleDatasetTranslation
+    Density:
+      output_path: Densities
+      description: Comoving gas mass density
+      units: "U_M/U_L**3"
+      a_scale: -3
+      h_scale: 2
+      type: ParticleDatasetTranslation
+    InternalEnergy:
+      output_path: InternalEnergies
+      description: Specific thermal energy of the gas cell
+      units: "U_V**2"
+      type: ParticleDatasetTranslation
+    SmoothingLength:
+      output_path: KernelLengths
+      description: Comoving radius of compact support of the gas interaction kernel
+      units: U_L
+      a_scale: 1
+      h_scale: -1
+      type: ParticleDatasetTranslation
+    StarFormationRate:
+      output_path: StarFormationRates
+      description: Instantaneous star formation rate of the gas cell
+      units: "Msun/yr"
+      type: ParticleDatasetTranslation
+    Abundances:
+      description: Particle number ratios relative to hydrogen nuclei
+      tags: []
+      type: CreateGroupTranslation
+    ElectronAbundance:
+      output_path: Abundances/Electrons
+      description: Free electrons per hydrogen nucleus
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species: &hydrogen_denominator
+          constant: [Hydrogen]
+          type: ConstantAttributeTranslation
+    NeutralHydrogenAbundance:
+      output_path: Abundances/NeutralHydrogen
+      description: Fraction of hydrogen nuclei in neutral hydrogen
+      type: ParticleDatasetTranslation
+      children:
+        Denominator_species: {<<: *hydrogen_denominator}
+    MassFractions: &mass_fractions
+      description: Chemical mass fractions
+      tags: []
+      type: CreateGroupTranslation
+
+Gas:
+  MassFractions:
+    # GIZMO stores total metals in column 0 and helium in column 1.
+    # Hydrogen, helium, and total metals partition the denominator mass.
+    Hydrogen: &hydrogen_fraction
+      <<: &gas_fraction
+        input_path: /PartType0/Metallicity
+        type: ParticleDatasetTranslation
+      columns: 0
+      description: >
+        Mass fraction of hydrogen, computed as one minus helium and total metals.
+      dtype: float32
+      pipeline:
+        Math2Step:
+          external: /PartType0/Metallicity
+          external_columns: [1]
+          equation: "1 - x - y"
+      children:
+        Denominator_species: &mass_denominator
+          constant: [Hydrogen, Helium, Metals]
+          type: ConstantAttributeTranslation
+    Helium: &helium_fraction
+      <<: *gas_fraction
+      columns: 1
+      description: Mass fraction of helium.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Carbon: &carbon_fraction
+      <<: *gas_fraction
+      columns: 2
+      description: Mass fraction of carbon.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Nitrogen: &nitrogen_fraction
+      <<: *gas_fraction
+      columns: 3
+      description: Mass fraction of nitrogen.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Oxygen: &oxygen_fraction
+      <<: *gas_fraction
+      columns: 4
+      description: Mass fraction of oxygen.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Neon: &neon_fraction
+      <<: *gas_fraction
+      columns: 5
+      description: Mass fraction of neon.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Magnesium: &magnesium_fraction
+      <<: *gas_fraction
+      columns: 6
+      description: Mass fraction of magnesium.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Silicon: &silicon_fraction
+      <<: *gas_fraction
+      columns: 7
+      description: Mass fraction of silicon.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Sulfur: &sulfur_fraction
+      <<: *gas_fraction
+      columns: 8
+      description: Mass fraction of sulfur.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Calcium: &calcium_fraction
+      <<: *gas_fraction
+      columns: 9
+      description: Mass fraction of calcium.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Iron: &iron_fraction
+      <<: *gas_fraction
+      columns: 10
+      description: Mass fraction of iron.
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Metals: &metals_fraction
+      <<: *gas_fraction
+      columns: 0
+      description: Total mass fraction of elements heavier than helium.
+      children: {Denominator_species: {<<: *mass_denominator}}
+
+PartType1:
+  output_path: /DarkMatter
+  type: GroupTranslation
+  has_particles: true
+  description: High-resolution dark matter particles in the zoom-in region
+  tags: [Particles, Massive]
+  pipeline:
+    LinkStep: {path: /PartType1}
+  children:
+    Aliases: {constant: [PartType1], type: ConstantAttributeTranslation}
+    Coordinates: {<<: *coordinates}
+    Velocities: {<<: *velocities}
+    Masses: {<<: *masses}
+    ParticleIDs: {<<: *ids}
+    ParticleChildIDsNumber: {<<: *split_trees}
+    ParticleIDGenerationNumber: {<<: *split_counts}
+    Potential: {<<: *potentials}
+
+PartType2:
+  output_path: /LowResolutionDarkMatter
+  type: GroupTranslation
+  has_particles: true
+  description: Lower-resolution dark matter particles in the cosmological volume
+  tags: [Particles, Massive]
+  pipeline:
+    LinkStep: {path: /PartType2}
+  children:
+    Aliases: {constant: [PartType2], type: ConstantAttributeTranslation}
+    Coordinates: {<<: *coordinates}
+    Velocities: {<<: *velocities}
+    Masses: {<<: *masses}
+    ParticleIDs: {<<: *ids}
+    ParticleChildIDsNumber: {<<: *split_trees}
+    ParticleIDGenerationNumber: {<<: *split_counts}
+    Potential: {<<: *potentials}
+
+PartType4:
+  output_path: /Stars
+  type: GroupTranslation
+  has_particles: true
+  description: Star particles representing single stellar populations
+  tags: [Particles, Massive, MassFraction, Metals]
+  pipeline:
+    LinkStep: {path: /PartType4}
+  children:
+    Aliases: {constant: [PartType4], type: ConstantAttributeTranslation}
+    Coordinates: {<<: *coordinates}
+    Velocities: {<<: *velocities}
+    Masses: {<<: *masses}
+    ParticleIDs: {<<: *ids}
+    ParticleChildIDsNumber: {<<: *split_trees}
+    ParticleIDGenerationNumber: {<<: *split_counts}
+    Potential: {<<: *potentials}
+    MassFractions:
+      <<: *mass_fractions
+      input_path: /PartType4
+      type: GroupTranslation
+      pipeline:
+        # Save this subgroup only when PartType4 exists. Its fields are explicit.
+        SkipStep: {priority: 125}
+    StellarFormationTime:
+      output_path: TransformScaleFactors
+      description: Cosmological scale factor at stellar formation
+      type: ParticleDatasetTranslation
+
+Stars:
+  MassFractions:
+    Hydrogen:
+      <<: *hydrogen_fraction
+      input_path: &stellar_metallicity /PartType4/Metallicity
+      pipeline:
+        Math2Step:
+          external: *stellar_metallicity
+          external_columns: [1]
+          equation: "1 - x - y"
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Helium:
+      <<: *helium_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Carbon:
+      <<: *carbon_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Nitrogen:
+      <<: *nitrogen_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Oxygen:
+      <<: *oxygen_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Neon:
+      <<: *neon_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Magnesium:
+      <<: *magnesium_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Silicon:
+      <<: *silicon_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Sulfur:
+      <<: *sulfur_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Calcium:
+      <<: *calcium_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Iron:
+      <<: *iron_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}
+    Metals:
+      <<: *metals_fraction
+      input_path: *stellar_metallicity
+      children: {Denominator_species: {<<: *mass_denominator}}

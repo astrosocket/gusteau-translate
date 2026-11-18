@@ -72,7 +72,15 @@ def _load_external_field(
         external = infile[path].attrs[name]
     else:
         external_ds = infile[external_path]
-        shape = (1 if skip_data else external_ds.shape[0], *external_ds.shape[1:])
+        nrows = 1 if skip_data else external_ds.shape[0]
+        if (
+            external_columns is not None
+            and external_columns.ndim == 0
+            and np.issubdtype(external_columns.dtype, np.integer)
+            and external_ds.ndim == 2
+        ):
+            return external_ds[:nrows, int(external_columns)]
+        shape = (nrows, *external_ds.shape[1:])
         external = np.empty(shape, dtype=external_ds.dtype)
         slice_ = np.s_[: shape[0], ...]
         external_ds.read_direct(external, source_sel=slice_)

@@ -1479,6 +1479,11 @@ mass_fraction = TagSpec(
     ],
 )
 
+metals = TagSpec(
+    name="Metals",
+    datagroups=[(ParticleDatasetSpec("Metals"), 2)],
+)
+
 ## tag_defs
 
 tag_defs.update(
@@ -1501,6 +1506,7 @@ tag_defs.update(
             snii,
             sph,
             merge_split,
+            metals,
             stellar_wind,
             subfind,
             subgrid,
