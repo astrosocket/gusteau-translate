@@ -152,7 +152,7 @@ def recurse_groups(
                     out_path=out_path,
                 )
                 try:
-                    field = FieldTranslation._subclasses[type_](**value)
+                    field = FieldTranslation._subclasses[type_].from_dict(value)
                     translation.add_field(field)
                 except Exception as ex:
                     LOGGER.warning(f"Failed on {key=}, {type_=}, {value=}")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import itertools
 import logging
 import re
@@ -10,7 +11,7 @@ from dataclasses import KW_ONLY, dataclass
 from enum import Enum, auto
 from pathlib import Path
 from traceback import TracebackException
-from typing import Any, ClassVar, Protocol, cast
+from typing import Any, ClassVar, Protocol, Self, cast
 
 import h5py
 from pydantic import BaseModel
@@ -234,6 +235,16 @@ class FieldTranslation[TranslationContext]:
 
         docpart[self.name] = field_table
         return field_table
+
+    @classmethod
+    def from_dict(cls, ft_dict: dict) -> Self:
+        return cls(
+            **{
+                k: v
+                for k, v in ft_dict.items()
+                if k in inspect.signature(cls).parameters
+            }
+        )
 
 
 def normalize_output_path(output_path: str) -> str:
