@@ -43,6 +43,8 @@ type compression_type = (
 
 
 class DatasetDefaultOptions(BaseModel):
+    """Options to apply when creating generic datasets."""
+
     _: KW_ONLY
     compression: compression_type | None = "gzip"
     """Generic dataset compression. Defaults to gzip"""
