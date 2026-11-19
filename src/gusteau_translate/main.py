@@ -78,13 +78,14 @@ def _add_packingcubes_subarguments(parser: argparse.ArgumentParser):
         "--pc-side-length",
         help="""
         Set the number of cells per dimension.
-        Value must be between 3 and 32, default 8.
+        Value must be between 3 and 32, default %(default)s.
 
         **Ignored** if the top-level cell structure is already provided in the
         snapshot.
         """,
         type=int,
-        default=8,
+        default=PackingCubesOptions.side_length,
+        choices=range(3, 32),
         metavar="N",
     )
     pc_args.add_argument(
