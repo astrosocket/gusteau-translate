@@ -15,8 +15,6 @@ from unyt.array import unyt_quantity
 from unyt.unit_registry import UnitRegistry
 from unyt.unit_systems import UnitSystem
 
-from gusteau_translate.translations.misc_translation import SkipTranslation
-
 from .cells import (
     _create_virtual_dataset,
     copy_cell_structure_to_partfiles,
@@ -45,6 +43,7 @@ from .translation_base import (
     translation_error_handler,
 )
 from .translations import GroupTranslation
+from .translations.misc_translation import SkipTranslation
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
