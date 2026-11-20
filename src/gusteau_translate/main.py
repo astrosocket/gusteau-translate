@@ -69,6 +69,14 @@ def _add_packingcubes_subarguments(parser: argparse.ArgumentParser):
         """,
     )
     pc_args.add_argument(
+        "--pc-override-cells",
+        help="""
+        Override the cell structure already present in the source file.
+        Does nothing if no such structure is present.
+        """,
+        action="store_true",
+    )
+    pc_args.add_argument(
         "--pc-particle-threshold",
         help="Set the leaf node particle threshold",
         type=int,
@@ -81,7 +89,7 @@ def _add_packingcubes_subarguments(parser: argparse.ArgumentParser):
         Value must be between 3 and 32, default %(default)s.
 
         **Ignored** if the top-level cell structure is already provided in the
-        snapshot.
+        snapshot and --pc-override-cells was not specified.
         """,
         type=int,
         default=PackingCubesOptions.side_length,
@@ -106,7 +114,7 @@ def _add_packingcubes_subarguments(parser: argparse.ArgumentParser):
         /Header.Bounding_box. 
         
         **Ignored** if the top-level group structure is already provided in the
-        snapshot.
+        snapshot and --pc-override-cells was not specified.
         """,
         nargs=6,
         type=float,

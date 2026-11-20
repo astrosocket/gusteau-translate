@@ -478,7 +478,7 @@ def _make_packingcubes_cells(options: TranslationOptions) -> CellsMetadata:
 def generate_cells(infile: h5py.File, options: TranslationOptions) -> CellsMetadata:
     """Generate the cells structure"""
     cells = parse_cell_structure(infile)
-    if cells and not options.packingcubes:
+    if cells and (not options.packingcubes or not options.pc_options.override_cells):
         return cells
 
     return (

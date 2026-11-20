@@ -20,6 +20,7 @@ class PackingCubesOptions:
     side_length: int = 8
     particle_type_str: InitVar[str] = _ALL_PARTICLE_GROUPS
     particle_types: list[str] = dataclasses.field(init=False, default_factory=list[str])
+    override_cells: bool | None = None
     box: np.ndarray | None = None
 
     def __post_init__(self, particle_type_str: str):
