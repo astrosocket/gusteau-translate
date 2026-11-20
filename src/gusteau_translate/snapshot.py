@@ -43,6 +43,7 @@ from .translation_base import (
     translation_error_handler,
 )
 from .translations import GroupTranslation
+from .translations.dataset_translation import _load_directly
 from .translations.misc_translation import SkipTranslation
 
 LOGGER = logging.getLogger(LOGGER_NAME)
@@ -350,6 +351,45 @@ def _add_cell_translations(translation: Translation, options: TranslationOptions
         )
 
 
+def _check_autoboxing(context: TranslationContext):
+    """Compute autobox if requested and add to quantities"""
+    if context.options.pc_options.autobox is None:
+        return
+    autobox = context.options.pc_options.autobox
+    field = context.translation.get_field_from_output(f"/{autobox}/Coordinates")
+    if field is None:
+        # check casing
+        field = context.translation.get_field_from_output(
+            f"/{autobox.capitalize()}/Coordinates"
+        )
+    if field is None:
+        raise ValueError(f"{autobox} is not an output particle type!")
+    pipeline = field.pipeline
+    if (
+        pipeline.remove("MathStep") is not None
+        or pipeline.remove("Math2Step") is not None
+    ):
+        raise ValueError(
+            "Autoboxing on mathematically transformed coordinates is not allowed"
+        )
+    dataset = cast(h5py.Dataset, context.infile[field.input_path])
+    LOGGER.log(DDEBUG, f"Attempting to load {dataset.name} directly")
+    data = _load_directly(
+        dataset,
+        dataset.shape,
+        1 if context.options.skip_data else dataset.shape[0],
+        1 if context.options.skip_data else dataset.shape[0] + 1,
+        dataset.dtype if field.dtype is None else field.dtype,
+    )
+    maxs = np.max(data, 0)
+    mins = np.min(data, 0)
+    dx = maxs - mins
+    box = np.hstack((mins, dx))
+    with np.printoptions(precision=1):
+        LOGGER.debug(f"Autoboxing on {autobox} gives a bounding box of {box}")
+    context.quantities["autobox"] = box
+
+
 def _fix_header_numbers(outfile: h5py.File, options: TranslationOptions):
     """Update the NumPart fields and Num_files_per_snapshot"""
     header = outfile["/Header"].attrs
@@ -440,6 +480,8 @@ class Snapshot:
             translation.initialize_required_groups(
                 outfile, partfile_paths if options.num_partfiles > 1 else []
             )
+
+            _check_autoboxing(context)
 
             # Order of translations:
             #  1. Explicit transformations
