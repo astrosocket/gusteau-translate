@@ -85,6 +85,16 @@ class REPLACEMENT_TYPE(Enum):
     """Cell grid is correct but needs to be scaled by bounding box"""
     OVERFLOW = auto()
     """Grid is manually provided, but the overflow cell needs to be updated"""
+    AUTOSCALE = auto()
+    """
+    Normalized grid needs to be scaled by autoscale bounding box (not header's).
+    Overflow box scaled by header.Bounding_box
+    """
+    OVERFLOW_AUTOSCALE = auto()
+    """
+    Normalized grid needs to be scaled by autoscale bounding box (not header's).
+    Overflow box is manually provided.
+    """
     FULL = auto()
     """The entire cells structure needs to be replaced"""
 
@@ -407,6 +417,20 @@ def _make_single_cell() -> CellsMetadata:
     )
 
 
+def _make_box_3d(box: np.ndarray) -> np.ndarray:
+    """Pad a 1,2, or 3D box to 3D"""
+    pc_box = box
+    d_box = len(pc_box) // 2
+    if d_box != len(pc_box) / 2:
+        raise ValueError(f"Dimension {d_box} of box makes no sense!")
+    return np.hstack(
+        (
+            np.pad(pc_box[:d_box], (0, 3 - d_box)),
+            np.pad(pc_box[d_box:], (0, 3 - d_box), constant_values=1),
+        )
+    )
+
+
 def _make_packingcubes_cells(options: PackingCubesOptions) -> CellsMetadata:
     """Make cell structure that is cube with N cells on a side
 
@@ -414,21 +438,25 @@ def _make_packingcubes_cells(options: PackingCubesOptions) -> CellsMetadata:
     This may need to be fixed later.
     """
 
-    if options.box:
-        pc_box = options.box
-        d_box = len(pc_box) // 2
-        if d_box != len(pc_box) / 2:
-            raise ValueError(f"Dimension {d_box} of packingcubes box makes no sense!")
-        Grid_box = np.hstack(
-            (
-                np.pad(pc_box[:d_box], (0, 3 - d_box)),
-                np.pad(pc_box[d_box:], (0, 3 - d_box), constant_values=1),
-            )
-        )
+    gridbox_specified = options.box is not None
+    autobox_specified = options.autobox is not None
+
+    if gridbox_specified and not autobox_specified:
+        # specified the cell grid (overflow needs to be updated to header.Bounding_box)
+        Grid_box = _make_box_3d(options.box)
+    else:
+        # for all other cases, start with a normalized grid box
+        Grid_box = np.array([0, 0, 0, 1, 1, 1], dtype=float)
+
+    if gridbox_specified and autobox_specified:
+        needs_updating = REPLACEMENT_TYPE.OVERFLOW_AUTOSCALE
+    elif not gridbox_specified and autobox_specified:
+        needs_updating = REPLACEMENT_TYPE.AUTOSCALE
+    elif gridbox_specified and not autobox_specified:
         needs_updating = REPLACEMENT_TYPE.OVERFLOW
     else:
-        Grid_box = np.array([0, 0, 0, 1, 1, 1], dtype=float)
         needs_updating = REPLACEMENT_TYPE.SCALING
+
     n = options.side_length
     Number_of_grid_cells = n**3
     Number_of_nongrid_cells = 1
@@ -459,6 +487,11 @@ def _make_packingcubes_cells(options: PackingCubesOptions) -> CellsMetadata:
     # Setup overflow box
     BoundingBoxes[-1, :] = [0, 0, 0, 1, 1, 1]
     Centres[-1, :] = [0.5, 0.5, 0.5]
+    if gridbox_specified and autobox_specified:
+        # the overflow box has been specified (as the grid box)
+        obox = _make_box_3d(options.box)
+        BoundingBoxes[-1, :] = obox
+        Centres[-1, :] = obox[:3] + obox[3:] / 2
 
     dimension = np.array([n, n, n])
 
@@ -488,14 +521,27 @@ def generate_cells(infile: h5py.File, options: TranslationOptions) -> CellsMetad
     )
 
 
-def update_cells(cells: CellsMetadata, outfile: h5py.File):
+def update_cells(
+    cells: CellsMetadata, outfile: h5py.File, other_box: np.ndarray | None = None
+):
     """Update the Cells object based on the value of needs_updating
 
     Note that this will fix the dimensionality issue for cases where
     `cells.needs_updating != REPLACEMENT_TYPE.NONE`
     """
+
+    autoscaling = (
+        cells.needs_updating == REPLACEMENT_TYPE.AUTOSCALE
+        or cells.needs_updating == REPLACEMENT_TYPE.OVERFLOW_AUTOSCALE
+    )
+
     header = outfile["/Header"].attrs
-    box = header["Bounding_box"]
+    if autoscaling:
+        if other_box is None:
+            raise ValueError("Cells need the autoscaling box but it was not provided!")
+        box = other_box
+    else:
+        box = header["Bounding_box"]
     D = header["Dimension"]
     if len(box) > 2 * D:
         # Update box in case Bounding_box is 3D but dimension is <3
@@ -516,12 +562,24 @@ def update_cells(cells: CellsMetadata, outfile: h5py.File):
         case REPLACEMENT_TYPE.NONE:
             # Nothing to do
             return
-        case REPLACEMENT_TYPE.SCALING:
+        case (
+            REPLACEMENT_TYPE.SCALING
+            | REPLACEMENT_TYPE.AUTOSCALE
+            | REPLACEMENT_TYPE.OVERFLOW_AUTOSCALE
+        ):
             # Rescale unit grid by bounding box
+            # skip the overflow box if it's already been set
+            lbi = (
+                cells.Number_of_grid_cells
+                if cells.needs_updating == REPLACEMENT_TYPE.OVERFLOW_AUTOSCALE
+                else cells.nr_cells
+            )
             cells.Grid_box = box
-            cells.BoundingBoxes[:, :D] = cells.BoundingBoxes[:, :D] * box[D:] + box[:D]
-            cells.BoundingBoxes[:, D:] *= box[D:]
-            cells.Centres[:, :D] = cells.Centres[:, :D] * box[D:] + box[:D]
+            cells.BoundingBoxes[:lbi, :D] = (
+                cells.BoundingBoxes[:lbi, :D] * box[D:] + box[:D]
+            )
+            cells.BoundingBoxes[:lbi, D:] *= box[D:]
+            cells.Centres[:lbi, :D] = cells.Centres[:lbi, :D] * box[D:] + box[:D]
             cells.size *= box[D:]
         case REPLACEMENT_TYPE.OVERFLOW:
             # Fix overflow cell using bounding box

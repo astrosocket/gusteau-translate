@@ -25,7 +25,7 @@ class UpdateFromCellsStep(TranslationStep):
             raise TranslationClassError(step=self, field=field)
 
         cells = context.cells
-        update_cells(cells, context.outfile)
+        update_cells(cells, context.outfile, context.quantities.get("autobox"))
         field.value = getattr(cells, field.cell_field)
 
         next_step(context)
