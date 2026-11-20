@@ -359,7 +359,17 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
         )
 
     pc_options = PackingCubesOptions(
-        **{k: v for k, v in vars(args).items() if "pc-" in k}
+        particle_type_str=getattr(
+            args, "pc_particle_types", PackingCubesOptions.particle_type_str
+        ),
+        particle_threshold=getattr(
+            args, "pc_particle_threshold", PackingCubesOptions.particle_threshold
+        ),
+        override_cells=getattr(
+            args, "pc_override_cells", PackingCubesOptions.override_cells
+        ),
+        side_length=getattr(args, "pc_side_length", PackingCubesOptions.side_length),
+        box=getattr(args, "pc_box", PackingCubesOptions.box),
     )
 
     options = TranslationOptions(
