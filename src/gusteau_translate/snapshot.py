@@ -84,7 +84,10 @@ def _check_snapshot_glob(
     # While we could use a simpler regex based method, (e.g. from
     # https://stackoverflow.com/a/11150413), it would be potentially quite
     # fragile
-    snapshots = natsorted(parent.glob(f"{snapshot_path.name}*"))
+    glob = []
+    for ext in ["hdf5", "h5"]:
+        glob.extend(parent.glob(f"{snapshot_path.name}*.{ext}"))
+    snapshots = natsorted(glob)
     if not snapshots:
         raise ValueError(f"Glob pattern {snapshot_path} produced no snapshots!")
     if not all(h5py.is_hdf5(snapshot) for snapshot in snapshots):
