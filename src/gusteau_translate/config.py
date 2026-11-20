@@ -22,6 +22,7 @@ class PackingCubesOptions:
     particle_types: list[str] = dataclasses.field(init=False, default_factory=list[str])
     override_cells: bool | None = None
     box: np.ndarray | None = None
+    autobox: str | None = None
 
     def __post_init__(self, particle_type_str: str):
         self.particle_types = [s.strip() for s in particle_type_str.split(",")]

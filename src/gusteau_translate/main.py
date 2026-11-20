@@ -111,14 +111,35 @@ def _add_packingcubes_subarguments(parser: argparse.ArgumentParser):
         "--pc-box",
         help="""
         Snapshot bounding box to use instead of the bounding box in
-        /Header.Bounding_box. 
+        /Header.Bounding_box when generating the cell grid. 
         
         **Ignored** if the top-level group structure is already provided in the
         snapshot and --pc-override-cells was not specified.
+
+        This can also be used in conjuction with the --pc-autobox option:
+        --pc-autobox will set the boundaries of the cell-grid while this option
+        sets the boundaries of the outer/overflow cell.
         """,
         nargs=6,
         type=float,
         metavar=("x", "y", "z", "dx", "dy", "dz"),
+    )
+    pc_args.add_argument(
+        "--pc-autobox",
+        help="""
+        Particle type to use for cell grid auto-sizing (for a zoom-in simulation
+        for example). Will find the xyz extents of the specified (output!)
+        particle type and use those to create the grid cells' bounding box.
+
+        **Ignored** if the top-level group structure is already provided in the
+        snapshot and --pc-override-cells was not specified.
+
+        Note that this can be used in conjunction with --pc-box: --pc-box will
+        set the boundaries of the outer/overflow cell while this option sets the
+        cell-grid.
+        """,
+        type=str,
+        metavar="output_particle_type",
     )
 
 
@@ -370,6 +391,7 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
         ),
         side_length=getattr(args, "pc_side_length", PackingCubesOptions.side_length),
         box=getattr(args, "pc_box", PackingCubesOptions.box),
+        autobox=getattr(args, "pc_autobox", PackingCubesOptions.autobox),
     )
 
     options = TranslationOptions(
