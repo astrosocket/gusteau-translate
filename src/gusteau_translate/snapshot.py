@@ -204,7 +204,7 @@ def initialize_particle_groups(
     particle_groups: list[str], context: TranslationContext, error_handler: ErrorHandler
 ):
     translation = context.translation
-    LOGGER.debug(f"Initializing the {particle_groups} particle groups for packingcubes")
+    LOGGER.debug(f"Initializing the {particle_groups} particle groups")
     for pg in particle_groups:
         output_path = f"/{pg}"
         field = translation.get_field_from_output(output_path)
@@ -235,7 +235,7 @@ def _process_particle_groups(
     # (note that this might require translations)
     translation = context.translation
     initialize_particle_groups(particle_groups, context, error_handler)
-    # _set_cubes_translator(translation, context)
+
     LOGGER.debug(
         f"Prioritizing the Coordinates dataset for the {particle_groups}"
         " groups for cells, packingcubes processing"
