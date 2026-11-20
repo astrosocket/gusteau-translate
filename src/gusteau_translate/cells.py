@@ -12,7 +12,7 @@ import h5py
 import numpy as np
 from pydantic import NonNegativeInt, PositiveInt, computed_field
 
-from .config import LOGGER_NAME, TranslationOptions
+from .config import LOGGER_NAME, PackingCubesOptions, TranslationOptions
 
 LOGGER = logging.getLogger(LOGGER_NAME)
 
@@ -407,15 +407,15 @@ def _make_single_cell() -> CellsMetadata:
     )
 
 
-def _make_packingcubes_cells(options: TranslationOptions) -> CellsMetadata:
+def _make_packingcubes_cells(options: PackingCubesOptions) -> CellsMetadata:
     """Make cell structure that is cube with N cells on a side
 
     Uses the grid box if available, but note that generated cell structure is 3D.
     This may need to be fixed later.
     """
 
-    if options.pc_options.box:
-        pc_box = options.pc_options.box
+    if options.box:
+        pc_box = options.box
         d_box = len(pc_box) // 2
         if d_box != len(pc_box) / 2:
             raise ValueError(f"Dimension {d_box} of packingcubes box makes no sense!")
@@ -429,7 +429,7 @@ def _make_packingcubes_cells(options: TranslationOptions) -> CellsMetadata:
     else:
         Grid_box = np.array([0, 0, 0, 1, 1, 1], dtype=float)
         needs_updating = REPLACEMENT_TYPE.SCALING
-    n = options.pc_options.side_length
+    n = options.side_length
     Number_of_grid_cells = n**3
     Number_of_nongrid_cells = 1
     nr_cells = Number_of_grid_cells + Number_of_nongrid_cells
@@ -482,7 +482,7 @@ def generate_cells(infile: h5py.File, options: TranslationOptions) -> CellsMetad
         return cells
 
     return (
-        _make_packingcubes_cells(options)
+        _make_packingcubes_cells(options.pc_options)
         if options.packingcubes
         else _make_single_cell()
     )
