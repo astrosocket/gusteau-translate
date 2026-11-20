@@ -70,18 +70,23 @@ def _load_external_field(
         # read as attribute
         path, name = external_path.split(".")
         external = infile[path].attrs[name]
-    else:
-        external_ds = infile[external_path]
-        shape = (1 if skip_data else external_ds.shape[0], *external_ds.shape[1:])
-        external = np.empty(shape, dtype=external_ds.dtype)
-        slice_ = np.s_[: shape[0], ...]
-        external_ds.read_direct(external, source_sel=slice_)
-
-    return (
-        external
-        if external_columns is None
-        else np.atleast_2d(external)[:, external_columns]
-    )
+        return (
+            external
+            if external_columns is None
+            else np.atleast_2d(external)[:, external_columns]
+        )
+    external_ds = infile[external_path]
+    shape = (1 if skip_data else external_ds.shape[0], *external_ds.shape[1:])
+    if len(shape) > 1:
+        sampled_shape1 = np.arange(shape[1])[external_columns]
+        if sampled_shape1.ndim and sampled_shape1.shape[0] > 1:
+            shape = (shape[0], sampled_shape1.shape[0], *shape[2:])
+        else:
+            shape = (shape[0], *shape[2:])
+    external = np.empty(shape, dtype=external_ds.dtype)
+    slice_ = np.s_[: shape[0], external_columns, ...]
+    external_ds.read_direct(external, source_sel=slice_)
+    return external
 
 
 @dataclass
