@@ -380,8 +380,8 @@ def _check_autoboxing(context: TranslationContext):
     data = _load_directly(
         dataset,
         dataset.shape,
-        1 if context.options.skip_data else dataset.shape[0],
-        1 if context.options.skip_data else dataset.shape[0] + 1,
+        1 if context.options.diagnostic else dataset.shape[0],
+        1 if context.options.diagnostic else dataset.shape[0] + 1,
         dataset.dtype if field.dtype is None else field.dtype,
     )
     maxs = np.max(data, 0)

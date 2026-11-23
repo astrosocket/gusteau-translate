@@ -245,7 +245,7 @@ def parse_arguments(argv=None) -> argparse.Namespace:
     )
 
     parser_trans.add_argument(
-        "--skip-data",
+        "--diagnostic",
         action="store_true",
         help="""
         Skip loading/saving entire datasets and just load the first row.
@@ -404,7 +404,7 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
     options = TranslationOptions(
         packingcubes=pc_options.particle_types if args.packingcubes else [],
         force_overwrite=bool(args.force_overwrite),
-        skip_data=bool(args.skip_data),
+        diagnostic=bool(args.diagnostic),
         num_partfiles=args.num_partfiles,
         pc_options=pc_options,
         compression=args.compression,
@@ -438,7 +438,7 @@ def validate(snapshot: Snapshot, args: argparse.Namespace) -> bool:
 
 
     """
-    options = ValidationOptions(skip_data=args.skip_data)
+    options = ValidationOptions(diagnostic=args.diagnostic)
     LOGGER.info(f"Loaded validation options: {options}")
 
     return snapshot.validate(options=options)

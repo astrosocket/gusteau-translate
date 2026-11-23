@@ -467,8 +467,8 @@ class DatasetLoadStep(LoadStep):
         if field.columns is not None and len(indata.shape) < 2:
             raise TranslationError("Attempting to load 1D dataset as 2D")
         shape = indata.shape
-        new_length = 1 if context.options.skip_data else shape[0]
-        max_index = 1 if context.options.skip_data else shape[0] + 1
+        new_length = 1 if context.options.diagnostic else shape[0]
+        max_index = 1 if context.options.diagnostic else shape[0] + 1
         new_type = indata.dtype if field.dtype is None else field.dtype
 
         field.value = _load_directly(
@@ -545,7 +545,7 @@ class DatasetLoadStep(LoadStep):
 
         field.chunks = in_chunks if field.chunks is None else field.chunks
         if isinstance(field.chunks, tuple):
-            chunk_height = 1 if context.options.skip_data else field.chunks[0]
+            chunk_height = 1 if context.options.diagnostic else field.chunks[0]
             if field.columns is not None:
                 field.chunks = (
                     (chunk_height,)

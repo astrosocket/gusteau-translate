@@ -174,7 +174,7 @@ class Math2Step(MathStep):
                     external,
                     columns,
                     context.infile,
-                    skip_data=context.options.skip_data,
+                    skip_data=context.options.diagnostic,
                 )
                 continue
             except KeyError as KE:

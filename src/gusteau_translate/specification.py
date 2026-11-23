@@ -1630,7 +1630,7 @@ class GUSTEAU:
         particle_names = cast(list[str], validation_info.get("Particle_names"))
         particle_numbers = cast(list[int], validation_info.get("Particle_numbers"))
         particle_numbers = (
-            [1 for _ in particle_numbers] if options.skip_data else particle_numbers
+            [1 for _ in particle_numbers] if options.diagnostic else particle_numbers
         )
         number_map = dict(zip(particle_names, particle_numbers, strict=True))
 

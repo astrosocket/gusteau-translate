@@ -92,7 +92,7 @@ class DatasetDefaultOptions(BaseModel):
 class TranslationOptions:
     _: KW_ONLY
     force_overwrite: bool = False
-    skip_data: bool = False
+    diagnostic: bool = False
     packingcubes: list[str] = dataclasses.field(default_factory=list)
     num_partfiles: PositiveInt = 1
     pc_options: PackingCubesOptions = dataclasses.field(
@@ -112,7 +112,7 @@ def _default_translation_options() -> TranslationOptions:
 class ValidationOptions:
     _: KW_ONLY
     gusteau_version: str | None = None
-    skip_data: bool = False
+    diagnostic: bool = False
 
 
 def _default_validation_options() -> ValidationOptions:
