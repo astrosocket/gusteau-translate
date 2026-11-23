@@ -34,7 +34,8 @@ type dict_info_type = (
 step_info = dict_info_type.__value__
 
 
-class TranslationError(PipelineError): ...
+class TranslationError(PipelineError):
+    _handled: bool = False
 
 
 class TranslationClassError(TranslationError):
@@ -263,17 +264,22 @@ def translation_error_handler(
     current_step: PipelineStep[TranslationContext],
     next_step: NextStep,
 ):
+    if isinstance(ex, TranslationError) and ex._handled:
+        raise ex
     cause = ex.__cause__ if ex.__cause__ is not None else ex
     traceback = TracebackException.from_exception(
         cause, capture_locals=True, lookup_lines=True
     )
-    msg = f"""
+    msg = f"""{ex}
     Translation failed on step {current_step.__class__.__name__}
     in the pipeline for {ctx.field.input_path}
+
     {"\n  ".join(traceback.format())}
     """
-    LOGGER.warning(msg)
-    raise TranslationError(ex) from cause
+    LOGGER.error(msg)
+    exc = TranslationError(ex)
+    exc._handled = True
+    raise exc from cause
 
 
 def add_field_to_dict(
