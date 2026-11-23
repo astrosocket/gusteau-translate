@@ -127,7 +127,7 @@ class PackCubesStep(TranslationStep):
         cell_indices = cells.Indices.get(orig_particle_group)
         if cell_indices is None:
             cell_indices = _compute_cell_indices(dataset, cells)
-            cells.Indices[particle_group] = cell_indices
+        cells.Indices[particle_group] = cell_indices
 
         cubes_dict = {
             "cube_indices": cell_indices,

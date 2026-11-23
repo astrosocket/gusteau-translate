@@ -252,7 +252,7 @@ def _get_presorted_indices(particle_group: str, infile: h5py.File) -> np.ndarray
     # directly if we have only one file
     if num_files == 1:
         # the indices
-        return offsets
+        return offsets[:]
 
     # Indices are not usable directly (since that's on a per-file basis)
     # We need to convert to indices into the vds
@@ -266,7 +266,7 @@ def _get_presorted_indices(particle_group: str, infile: h5py.File) -> np.ndarray
     return np.array(
         [
             offset + file_offset[file_num]
-            for offset, file_num in zip(files, offsets, strict=True)
+            for file_num, offset in zip(files, offsets, strict=True)
         ]
     )
 
