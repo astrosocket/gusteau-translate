@@ -667,14 +667,15 @@ class Translation:
                     and hash_ not in failed
                 ):
                     failed[hash_] = field
-        reasons = "\n  ".join(
-            f"{f.input_path}->{f.output_path}:\n    Reason: {f.input_description}"
-            for f in failed.values()
-        )
-        LOGGER.warning(f"The following translations failed:\n  {reasons}")
-        if raise_error and failed:
-            exc_class = TranslationError if exc_class is None else exc_class
-            raise exc_class("Failed Translations")
+        if failed:
+            reasons = "\n  ".join(
+                f"{f.input_path}->{f.output_path}:\n    Reason: {f.input_description}"
+                for f in failed.values()
+            )
+            LOGGER.warning(f"The following translations failed:\n  {reasons}")
+            if raise_error:
+                exc_class = TranslationError if exc_class is None else exc_class
+                raise exc_class("Failed Translations")
         return bool(failed)
 
     def to_dict(self, *, prefer_input: bool | None = None) -> dict[str, dict_info_type]:

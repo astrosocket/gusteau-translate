@@ -473,6 +473,7 @@ def cli(argv: list[str] | None = None) -> bool:
     args = parse_arguments(argv=argv)
 
     file_handler = logging.FileHandler(filename=args.log_file, mode="w")
+    file_handler.setFormatter(logging.getLogger().handlers[0].formatter)
     logging.getLogger().addHandler(file_handler)
 
     snapshot = Snapshot(args.input)
