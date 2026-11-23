@@ -549,10 +549,16 @@ class Translation:
             LOGGER.info(f"Translating {field.name}")
             field._status = TranslationStatus.IN_PROGRESS
             context.field = field
-            field.pipeline(context=context, error_handler=error_handler)
-            field._status = TranslationStatus.USED
             if field.input_path:
                 out_fields.append(field.input_path)
+            try:
+                field.pipeline(context=context, error_handler=error_handler)
+            except TranslationError as TE:
+                if context.options.diagnostic:
+                    field.input_description = str(TE.args[0])
+                    continue
+                raise TE
+            field._status = TranslationStatus.USED
         return out_fields
 
     def initialize_required_groups(
@@ -638,6 +644,38 @@ class Translation:
         # Note that we only include fields in out2in because we don't care about
         # fields that don't have an output
         return self.apply_translation(self.out2in.values(), context, error_handler)
+
+    def _log_failed_translations(
+        self, *, raise_error: bool = False, exc_class=None
+    ) -> bool:
+        """Log any failed translations if skip-data is True"""
+        # we don't need to check skip-data, because if it was False,
+        # we would already have stopped
+        failed = {}
+
+        def to_key(field: FieldTranslation) -> str:
+            return f"{field.input_path}->{field.output_path}"
+
+        for field in self.out2in.values():
+            if field._status == TranslationStatus.IN_PROGRESS:
+                failed[to_key(field)] = field
+        for field_lists in self.in2out.values():
+            for field in field_lists:
+                hash_ = to_key(field)
+                if (
+                    field._status == TranslationStatus.IN_PROGRESS
+                    and hash_ not in failed
+                ):
+                    failed[hash_] = field
+        reasons = "\n  ".join(
+            f"{f.input_path}->{f.output_path}:\n    Reason: {f.input_description}"
+            for f in failed.values()
+        )
+        LOGGER.warning(f"The following translations failed:\n  {reasons}")
+        if raise_error and failed:
+            exc_class = TranslationError if exc_class is None else exc_class
+            raise exc_class("Failed Translations")
+        return bool(failed)
 
     def to_dict(self, *, prefer_input: bool | None = None) -> dict[str, dict_info_type]:
         doc: dict[str, dict_info_type] = {}

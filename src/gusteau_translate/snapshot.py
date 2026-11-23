@@ -39,6 +39,7 @@ from .specification import (
 from .translation_base import (
     Translation,
     TranslationContext,
+    TranslationError,
     dummy_field,
     translation_error_handler,
 )
@@ -47,6 +48,9 @@ from .translations.dataset_translation import _load_directly
 from .translations.misc_translation import SkipTranslation
 
 LOGGER = logging.getLogger(LOGGER_NAME)
+
+
+class DiagnosticWarning(TranslationError): ...
 
 
 def _build_virtual_input_dataset(snapshots: list[Path], virtual_file: Path) -> Path:
@@ -508,13 +512,27 @@ class Snapshot:
                 )
             )
 
-            # Now we have the header, we need to update it to fix NumPart_ThisFile,
-            # NumPart_Total, NumPart_Total_HW, and Num_files_per_snapshot
-            _fix_header_numbers(outfile, options)
+            try:
+                # Now we have the header, we need to update it to fix NumPart_ThisFile,
+                # NumPart_Total, NumPart_Total_HW, and Num_files_per_snapshot
+                _fix_header_numbers(outfile, options)
 
-            # Now that we have the required group Units, we can make the registry
-            create_unit_registry(context)
-            set_cosmo_quantities(context)
+                # Now that we have the required group Units, we can make the registry
+                create_unit_registry(context)
+                set_cosmo_quantities(context)
+            except KeyError as KE:
+                translation._log_failed_translations()
+                msg = (
+                    "Failure in setting header output variable."
+                    " Translation cannot continue!"
+                )
+                exc = (
+                    DiagnosticWarning(msg)
+                    if options.diagnostic
+                    else TranslationError(msg)
+                )
+                LOGGER.error(msg)
+                raise exc from KE
 
             # Prioritize the Coordinates field for all particle groups
             _process_particle_groups(
@@ -581,8 +599,14 @@ class Snapshot:
             LOGGER.info("Performing any remaining translations")
             translation.apply_unused_translations(context, error_handler)
 
+            # Logging statement handled in function
+            exc_class = DiagnosticWarning if options.diagnostic else TranslationError
+            translation._log_failed_translations(raise_error=True, exc_class=exc_class)
+
+            LOGGER.info("Updating particle group numbers")
             _write_particle_group_field_numbers(context)
 
+            # Logging statement handled in function
             copy_cell_structure_to_partfiles(outfile, partfile_paths)
 
             LOGGER.info("Writing /.Metadata attribute")

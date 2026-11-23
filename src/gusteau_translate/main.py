@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import importlib.util
 import logging
 import sys
@@ -19,7 +20,7 @@ from .config import (
     TranslationOptions,
     ValidationOptions,
 )
-from .snapshot import Snapshot
+from .snapshot import DiagnosticWarning, Snapshot
 from .styles import parse_modular_style_file
 from .translation_base import (
     GUSTEAU_Options,
@@ -413,11 +414,12 @@ def translate(snapshot: Snapshot, args: argparse.Namespace) -> Literal[True]:
 
     translation = get_translation(args.translation, options)
 
-    return snapshot.translate(
-        translation,
-        args.output,
-        options=options,
-    )
+    with contextlib.suppress(DiagnosticWarning):
+        return snapshot.translate(
+            translation,
+            args.output,
+            options=options,
+        )
 
 
 def validate(snapshot: Snapshot, args: argparse.Namespace) -> bool:
