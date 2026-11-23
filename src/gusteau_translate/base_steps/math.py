@@ -179,7 +179,10 @@ class Math2Step(MathStep):
                 continue
             except KeyError as KE:
                 if external not in self.fallback:
-                    raise KE
+                    raise TranslationError(
+                        f"Field {external} not in {context.infile.filename}"
+                        " and no fallback provided"
+                    ) from KE
             # fallback logic
             fallback = self.fallback[external]
             locals_[local_name] = (
