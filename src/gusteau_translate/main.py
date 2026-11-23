@@ -183,6 +183,13 @@ def parse_arguments(argv=None) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--log-file",
+        type=str,
+        help="""Specify the name of the logfile to use. Default %(default)s""",
+        default="alchemize.log",
+    )
+
+    parser.add_argument(
         "input",
         help="Path to the input snapshot file",
         type=str,
@@ -459,11 +466,13 @@ def cli(argv: list[str] | None = None) -> bool:
         `True` if translation and/or validation are successful
 
     """
-    file_handler = logging.FileHandler(filename="alchemize.log", mode="w")
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    logging.basicConfig(handlers=[file_handler, stdout_handler])
+    logging.basicConfig(stream=sys.stdout)
 
     args = parse_arguments(argv=argv)
+
+    file_handler = logging.FileHandler(filename=args.log_file, mode="w")
+    logging.getLogger().addHandler(file_handler)
+
     snapshot = Snapshot(args.input)
 
     return args.subcommand(snapshot, args)
