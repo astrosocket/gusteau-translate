@@ -84,5 +84,6 @@ PartType1:
         With adaptive softening, this varies from element to element.
       output_path: AGS_Softenings
       units: "U_L"
-      a_scale: -1
+      a_scale: 1
+      h_scale: -1
       type: ParticleDatasetTranslation
