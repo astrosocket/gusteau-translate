@@ -27,22 +27,23 @@ Header:
   Source: {constant: swift-eagle, type: ConstantAttributeTranslation}
   Source_file: {file_path: swift-eagle, type: FileContentsTranslation}
   Particle_names:
-    constant: ["Gas", "ColdDarkMatter", "Stars", "BlackHoles"]
+    constant: ["Gas", "ColdDarkMatter", "BackgroundDarkMatter", "Sink", "Stars", "BlackHoles", "Neutrinos"]
     type: ConstantAttributeTranslation
     pipeline:
+      MaskParticlesStep: {}
       SaveQuantityStep: {name: Particle_names}
   Particle_numbers:
     input_path: /Header.NumPart_Total
     type: AttributeTranslation
     dtype: uint64
     pipeline:
-      ReorderColumnStep: {new_width: 4, col_indices: [0, 1, 4, 5]}
+      MaskParticlesStep: {}
       SaveQuantityStep: {name: Particle_numbers}
   Initial_mass_table:
     input_path: /Header.InitialMassTable
     type: AttributeTranslation
     pipeline:
-      ReorderColumnStep: {new_width: 4, col_indices: [0, 1, 4, 5]}
+      MaskParticlesStep: {}
   Bounding_box:
     input_path: /Header.BoxSize
     type: AttributeTranslation
@@ -60,8 +61,9 @@ Header:
     type: AttributeTranslation
   Dimension: {force_scalar: true, type: AttributeTranslation}
   Part_type_mapping:
-    constant: [0, 1, -1, -1, 1, 2]
+    constant: [0, 1, 2, 3, 4, 5]
     type: ConstantAttributeTranslation
+    pipeline: {MapParticlesStep: {}}
   Snapshot_date:
     input_path: /Header.SnapshotDate
     type: AttributeTranslation

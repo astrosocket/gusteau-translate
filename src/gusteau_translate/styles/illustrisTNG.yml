@@ -30,9 +30,16 @@ Header:
   Source: {constant: illustrisTNG, type: ConstantAttributeTranslation}
   Source_file: {file_path: illustrisTNG, type: FileContentsTranslation}
   Particle_names:
-    constant: ["Gas", "ColdDarkMatter", "Stars", "BlackHoles"]
+    constant:
+      - Gas
+      - ColdDarkMatter
+      - Unused
+      - Tracers
+      - Stars
+      - BlackHoles
     type: ConstantAttributeTranslation
     pipeline:
+      MaskParticlesStep: {ignore: 3}
       SaveQuantityStep: {name: Particle_names}
   Particle_numbers:
     input_path: /Header.NumPart_Total
@@ -43,13 +50,13 @@ Header:
         priority: 1
         equation: "2**32 * np.uint64(y) + x"
         external: /Header.NumPart_Total_HighWord
-      ReorderColumnStep: {priority: 2, new_width: 4, col_indices: [0, 1, 4, 5]}
+      MaskParticlesStep: {priority: 2, ignore: 3}
       SaveQuantityStep: {name: Particle_numbers}
   Initial_mass_table:
     input_path: /Header.MassTable
     type: AttributeTranslation
     pipeline:
-      ReorderColumnStep: {new_width: 4, col_indices: [0, 1, 4, 5]}
+      MaskParticlesStep: {ignore: 3}
   Bounding_box:
     input_path: /Header.BoxSize
     type: AttributeTranslation
@@ -69,8 +76,10 @@ Header:
     type: AttributeTranslation
   Dimension: {constant: 3, type: ConstantAttributeTranslation}
   Part_type_mapping:
-    constant: [0, 1, -1, -1, 1, 2]
+    constant: [0, 1, -1, -1, 4, 5]
     type: ConstantAttributeTranslation
+    pipeline:
+      MapParticlesStep: {ignore: 3}
   Snapshot_date:
     attribute: timestamp
     type: SnapshotAttributeTranslation
