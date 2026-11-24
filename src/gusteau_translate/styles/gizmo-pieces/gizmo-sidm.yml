@@ -22,5 +22,6 @@ PartType1:
         AGS_DesNumNgb
       output_path: AGS_KernelRadii
       units: "U_L"
-      a_scale: -1
+      a_scale: 1
+      h_scale: -1
       type: ParticleDatasetTranslation
