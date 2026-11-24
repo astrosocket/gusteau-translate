@@ -1,3 +1,8 @@
+"""
+Translations steps that are simulation code-specific or may depend on external
+tools, like packingcubes.
+"""
+
 from .illustris import HandleIllustrisUnitsStep as HandleIllustrisUnitsStep
 from .packcubes import (
     PackCubesStep as PackCubesStep,

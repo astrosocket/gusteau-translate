@@ -21,7 +21,7 @@ class ParseUnitsStep(TranslationStep):
     Note that we assume the scale factor ($a$), and little-h ($h$) are
     specified separately (as `a_scale` and `h_scale`) and that 'a' and 'h' terms
     in the units field should be parsed as units/constants (e.g. Planck's
-    constant)
+    constant or the radiation density constant)
     """
 
     def __call__(self, context: TranslationContext, next_step: NextStep):

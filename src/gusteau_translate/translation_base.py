@@ -78,7 +78,7 @@ class TranslationStep[TranslationContext](PipelineStep):
         Priority of this step in the pipeline.
         Lower values come first. Default is `1`.
     write_out:
-        Whether to include this step when writing out a translation
+        Whether to include this step when writing out a translation.
         Not needed for generic steps, like attribute loading.
         Default is `True`.
 
